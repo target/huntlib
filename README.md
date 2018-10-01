@@ -1,6 +1,8 @@
 # HuntLib
 A Python library to help with some common threat hunting data analysis operations
 
+[![Target’s CFC-Open-Source Slack](https://cfc-slack-inv.herokuapp.com/badge.svg?colorA=155799&colorB=159953)](https://cfc-slack-inv.herokuapp.com/)
+
 ## What's Here?
 The `huntlib` module provides two major object classes as well as a few convenience functions.  
 
