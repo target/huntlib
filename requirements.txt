@@ -3,3 +3,4 @@ splunk-sdk
 elasticsearch-dsl
 pandas
 numpy
+jellyfish

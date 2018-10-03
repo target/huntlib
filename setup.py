@@ -16,7 +16,8 @@ setup(name='huntlib',
         'splunk-sdk',
         'elasticsearch-dsl',
         'pandas',
-        'numpy'
+        'numpy',
+        'jellyfish<0.7'
       ],
       zip_safe=True
 )

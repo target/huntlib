@@ -6,8 +6,10 @@ from __future__ import division
 from builtins import input
 import getpass
 import math
+from jellyfish import levenshtein_distance, damerau_levenshtein_distance, hamming_distance, jaro_distance, jaro_winkler
+import sys
 
-__all__ = ['elastic', 'splunk', 'entropy', 'entropy_per_byte', 'promptCreds']
+__all__ = ['elastic', 'splunk', 'entropy', 'entropy_per_byte', 'promptCreds', 'edit_distance']
 
 def entropy(string):
     '''
@@ -45,3 +47,48 @@ def promptCreds(uprompt="Username: ", pprompt="Password: "):
     u = input(uprompt)
     p = getpass.getpass(pprompt)
     return (u,p)
+
+def edit_distance(str1, str2, method="damerau-levenshtein"):
+    '''
+    Calculate the edit distance between 'str1' and 'str2' using any of a
+    number of algorithms.
+
+    'str1', 'str2': Input strings
+    'method': The algorithm to use.
+
+    Available algorithms:
+        * levenshtein
+        * damerau-levenshtein (DEFAULT)
+        * hamming
+        * jaro
+        * jaro-winkler
+
+    Return values:
+        "levenshtein", "damerau-levenshtein" and "hamming" return integers
+        "jaro" and "jaro-winkler" return floats in the range of 0.0 (completely
+        different) to 1.0 (identical strings).
+    '''
+    algos = {
+        "levenshtein":levenshtein_distance,
+        "damerau-levenshtein":damerau_levenshtein_distance,
+        "hamming":hamming_distance,
+        "jaro":jaro_distance,
+        "jaro-winkler":jaro_winkler
+    }
+
+    if not method in list(algos.keys()):
+        raise ValueError("Unsupported algorithm type: %s" % method)
+
+    if str1 is None or str2 is None or not isinstance(str1, str) or not isinstance(str2, str):
+        raise TypeError("Arguments must be strings.")
+
+    distance_function = algos[method]
+
+    # All the jellyfish distance functions expect unicode, which is the default
+    # for Python3.  If we're running in Python2, we need to convert them.
+    python_version = sys.version_info
+    if python_version.major == 2:
+        str1 = unicode(str1)
+        str2 = unicode(str2)
+
+    return distance_function(str1, str2)
