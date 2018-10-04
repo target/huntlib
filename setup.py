@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='huntlib',
-      version='0.1',
+      version='0.2',
       description='A Python library to help with some common threat hunting data analysis operations',
       url='https://github.com/target/huntlib',
       author='David J. Bianco',
