@@ -55,7 +55,7 @@ class SplunkDF(object):
                                           max_time=0)
 
     def search(self, spl, mode="normal", search_args=None, verbose=False,
-               days=None, start_time=None, end_time=None):
+               days=None, start_time=None, end_time=None, limit=None):
         '''
         Search Splunk and return the results as a list of dicts.
 
@@ -74,6 +74,7 @@ class SplunkDF(object):
         verbose: If True, any errors, warnings or other messages encountered
                  by the search process will be printed to stdout.  The default is False
                  (suppress these messages).
+        limit: An integer describing the max number of search results to return.
         '''
         if not search_args or not isinstance(search_args, dict):
             search_args = dict()
@@ -94,8 +95,17 @@ class SplunkDF(object):
                     end_time = end_time.isoformat()
                 search_args["latest_time"] = end_time
 
-        # Use the "export" job type, since that's the most reliable way to return possibly large result sets
-        export_results = self.splunk_conn.jobs.export(spl, **search_args)
+        if limit:
+            search_args['count'] = limit
+            # use the "oneshot" job type, since it will accept the 'count'
+            # argument. Downside is that it's subject to a max result set
+            # specified in limits.conf on the server, though.
+            export_results = self.splunk_conn.jobs.oneshot(spl, **search_args)
+        else:
+            # Use the "export" job type, since that's the most reliable way to
+            # return possibly large result sets, with no apparent limits
+            export_results = self.splunk_conn.jobs.export(spl, **search_args)
+        
 
         reader = results.ResultsReader(export_results)
 
@@ -106,7 +116,8 @@ class SplunkDF(object):
                 print("Message: %s" % res)
 
     def search_df(self, spl, mode="normal", search_args=None, verbose=False,
-                  days=None, start_time=None, end_time=None, normalize=True):
+                  days=None, start_time=None, end_time=None, normalize=True,
+                  limit=None):
         '''
         Search Splunk and return the results as a Pandas DataFrame.
 
@@ -129,13 +140,14 @@ class SplunkDF(object):
                    will be flattened such that each field has it's own column in
                    the dataframe. If False, there will be a single column for the
                    structure, with a JSON string encoding all the contents.
+        limit: An integer describing the max number of search results to return.
         '''
 
         results = list()
         for hit in self.search(spl=spl, mode=mode,
                                search_args=search_args, verbose=verbose,
                                days=days, start_time=start_time,
-                               end_time=end_time):
+                               end_time=end_time, limit=limit):
             results.append(hit)
 
         if normalize:
