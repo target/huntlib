@@ -31,7 +31,7 @@ class ElasticDF(object):
 
         # A more complex example, showing how to set the Elastic document type,
         # use Python-style datetime objects to constrain the search to a certain
-        # time period, and a user-defined field against which to do the time 
+        # time period, and a user-defined field against which to do the time
         # comparisons.
         df = e.search_df(lucene="item:5285 AND color:red", index="myindex-*",
                          doctype="doc", date_field="mydate",
@@ -57,7 +57,7 @@ class ElasticDF(object):
 
     def search(self, lucene, index="*", doctype="doc", fields=None,
                date_field="@timestamp", days=None, start_time=None,
-               end_time=None):
+               end_time=None, limit=None):
         '''
         Search Elastic and return the results as a list of dicts.
 
@@ -104,13 +104,20 @@ class ElasticDF(object):
         elif start_time and end_time:
             s = s.filter('range', ** {date_field: {"gte": start_time, "lte": end_time}})
 
-        # execute the search
-        results = s.scan()
+        # Add a search limit, if one is specified. Note that this is per-shard,
+        # not total results.
+        if limit:
+            s = s.params(size=limit)
+        else:
+            # Scan to explicitly return all results
+            s = s.scan()
 
-        for hit in results:
+        for hit in s:
             yield hit.to_dict()
 
-    def search_df(self, lucene, index="*", doctype="doc", fields=None, date_field="@timestamp", days=None, start_time=None, end_time=None, normalize=True):
+    def search_df(self, lucene, index="*", doctype="doc", fields=None,
+                  date_field="@timestamp", days=None, start_time=None,
+                  end_time=None, normalize=True, limit=None):
         '''
         Search Elastic and return the results as a Pandas DataFrame.
 
@@ -139,7 +146,8 @@ class ElasticDF(object):
 
         for hit in self.search(lucene=lucene, index=index, doctype=doctype,
                                fields=fields, date_field=date_field, days=days,
-                               start_time=start_time, end_time=end_time):
+                               start_time=start_time, end_time=end_time,
+                               limit=limit):
             results.append(hit)
 
         if normalize:
