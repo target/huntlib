@@ -77,6 +77,7 @@ class ElasticDF(object):
         end_time: A datetime() object representing the end of the search window.
                   If used without start_time, the search start will be the earliest
                   time in the index.
+        limit: An integer describing the max number of search results to return.
         '''
 
         s = Search(using=self.es_conn, index=index, doc_type=doctype)
@@ -141,6 +142,7 @@ class ElasticDF(object):
                    will be flattened such that each field has it's own column in
                    the dataframe. If False, there will be a single column for the
                    structure, with a JSON string encoding all the contents.
+        limit: An integer describing the max number of search results to return.
         '''
         results = list()
 
