@@ -38,6 +38,14 @@ class ElasticDF(object):
                          doctype="doc", date_field="mydate",
                          start_time=datetime.now() - timedelta(days=8),
                          end_time=datetime.now() - timedelta(days=6))
+
+    ElasticDF will raise InvalidRequestSearchException() in the event that
+    the search request is syntactically correct but is otherwise invalid.
+    For example, if you request more results be returned than the server is
+    able to provide.  It can also raise an UnknownSearchException(), in which
+    case the exception message will contain the original error message returned
+    by Elastic so you can figure out what went wrong.
+
     '''
 
     es_conn = None # The connection to the ES server
