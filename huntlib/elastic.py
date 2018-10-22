@@ -1,3 +1,4 @@
+from huntlib.exceptions import *
 from builtins import object
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
@@ -109,12 +110,21 @@ class ElasticDF(object):
         # not total results.
         if limit:
             s = s.params(size=limit)
+            response = s.execute()
         else:
             # Scan to explicitly return all results
+            response = s.execute()
             s = s.scan()
 
-        for hit in s:
-            yield hit.to_dict()
+        if response.success():
+            for hit in s:
+                yield hit.to_dict()
+        else:
+            reason = response._shards.failures[0].reason
+            if "Result window is too large" in reason['reason']:
+                raise InvalidRequestSearchException("Too many results requested (more than index.max_result_window settings on the index). Either reduce the result limit or remove the limit paramter entirely.")
+            else:
+                raise UnknownSearchException("Message from Elastic was: %s" % reason['reason'])
 
     def search_df(self, lucene, index="*", doctype="doc", fields=None,
                   date_field="@timestamp", days=None, start_time=None,
