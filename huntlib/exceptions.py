@@ -1,6 +1,7 @@
 __all__ = [
     'BaseSearchException',
     'InvalidRequestSearchException',
+    'AuthenticationErrorSearchException',
     'UnknownSearchException'
 ]
 
@@ -15,6 +16,12 @@ class InvalidRequestSearchException(BaseSearchException):
     Used when the user's request search is syntactically correct but
     invalid (e.g., they requested more results be returned than the server
     is capable of returning).
+    '''
+    pass
+
+class AuthenticationErrorSearchException(BaseSearchException):
+    '''
+    Raised when the search server rejected the supplied credentials.
     '''
     pass
 

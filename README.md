@@ -19,46 +19,55 @@ The `ElasticDF()` class searches Elastic and returns results as a Pandas DataFra
 
 Create a plaintext connection to the Elastic server, no authentication
 
-    e = ElasticDF(
-                    url="http://localhost:9200"
-    )
+```python
+e = ElasticDF(
+                url="http://localhost:9200"
+)
+```
 
 The same, but with SSL and authentication
 
-    e = ElasticDF(
-                    url="https://localhost:9200",
-                    ssl=True,
-                    username="myuser",
-                    password="mypass"
-    )
-
+```python
+e = ElasticDF(
+                url="https://localhost:9200",
+                ssl=True,
+                username="myuser",
+                password="mypass"
+)
+```
 Fetch search results from an index or index pattern for the previous day
 
-    df = e.search_df(
-                      lucene="item:5282 AND color:red",
-                      index="myindex-*",
-                      days=1
-    )
+```python
+df = e.search_df(
+                  lucene="item:5282 AND color:red",
+                  index="myindex-*",
+                  days=1
+)
+```
 
 The same, but do not flatten structures into individual columns. This will result in each structure having a single column with a JSON string describing the structure.
 
-    df = e.search_df(
-                      lucene="item:5282 AND color:red",
-                      index="myindex-*",
-                      days=1,
-                      normalize=False
-    )
+```python
+df = e.search_df(
+                  lucene="item:5282 AND color:red",
+                  index="myindex-*",
+                  days=1,
+                  normalize=False
+)
+```
 
 A more complex example, showing how to set the Elastic document type, use Python-style datetime objects to constrain the search to a certain time period, and a user-defined field against which to do the time comparisons. The result size will be limited to no more than 1500 entries.
 
-    df = e.search_df(
-                      lucene="item:5285 AND color:red",
-                      index="myindex-*",
-                      doctype="doc", date_field="mydate",
-                      start_time=datetime.now() - timedelta(days=8),
-                      end_time=datetime.now() - timedelta(days=6),
-                      limit=1500
-    )
+```python
+df = e.search_df(
+                  lucene="item:5285 AND color:red",
+                  index="myindex-*",
+                  doctype="doc", date_field="mydate",
+                  start_time=datetime.now() - timedelta(days=8),
+                  end_time=datetime.now() - timedelta(days=6),
+                  limit=1500
+)
+```
 
 ## huntlib.splunk.SplunkDF
 
@@ -68,53 +77,67 @@ The `SplunkDF` class search Splunk and returns the results as a Pandas DataFrame
 
 Establish an connection to the Splunk server. Whether this is SSL/TLS or not depends on the server, and you don't really get a say.
 
-    s = SplunkDF(
-                  host=splunk_server,
-                  username="myuser",
-                  password="mypass"
-    )
+```python
+s = SplunkDF(
+              host=splunk_server,
+              username="myuser",
+              password="mypass"
+)
+```
 
 Fetch all search results across all time
 
-    df = s.search_df(
-                      spl="search index=win_events EventCode=4688"
-    )
+```python
+df = s.search_df(
+                  spl="search index=win_events EventCode=4688"
+)
+```
 
 Fetch only specific fields, still across all time
 
-    df = s.search_df(
-                      spl="search index=win_events EventCode=4688 | table ComputerName _time New_Process_Name Account_Name Creator_Process_ID New_Process_ID Process_Command_Line"
-    )
+```python
+df = s.search_df(
+                  spl="search index=win_events EventCode=4688 | table ComputerName _time New_Process_Name Account_Name Creator_Process_ID New_Process_ID Process_Command_Line"
+)
+```
 
 Time bounded search, 2 days prior to now
 
-    df = s.search_df(
-                      spl="search index=win_events EventCode=4688",
-                      days=2
-    )
+```python
+df = s.search_df(
+                  spl="search index=win_events EventCode=4688",
+                  days=2
+)
+```
 
 Time bounded search using Python datetime() values
 
-    df = s.search_df(
-                      spl="search index=win_events EventCode=4688",
-                      start_time=datetime.now() - timedelta(days=2),
-                      end_time=datetime.now()
-    )
+```python
+df = s.search_df(
+                  spl="search index=win_events EventCode=4688",
+                  start_time=datetime.now() - timedelta(days=2),
+                  end_time=datetime.now()
+)
+```
 
 Time bounded search using Splunk notation
 
-    df = s.search_df(
-                      spl="search index=win_events EventCode=4688",
-                      start_time="-2d@d",
-                      end_time="@d"
-    )
+```python
+df = s.search_df(
+                  spl="search index=win_events EventCode=4688",
+                  start_time="-2d@d",
+                  end_time="@d"
+)
+```
 
 Limit the number of results returned to no more than 1500
 
-    df = s.search_df(
-        spl="search index=win_events EventCode=4688",
-        limit=1500
-    )
+```python
+df = s.search_df(
+                  spl="search index=win_events EventCode=4688",
+                  limit=1500
+)
+```
 
 *NOTE: The value specified as the `limit` is also subject to a server-side max value. By default, this is 50000 and can be changed by editing limits.conf on the Splunk server. If you use the limit parameter, the number of search results you receive will be the lesser of the following values: 1) the actual number of results available, 2) the number you asked for with `limit`, 3) the server-side maximum result size.  If you omit limit altogether, you will get the **true** number of search results available without subject to additional limits.*
 
@@ -124,10 +147,12 @@ Limit the number of results returned to no more than 1500
 
 We define two entropy functions, `entropy()` and `entropy_per_byte()`. Both accept a single string as a parameter.  The `entropy()` function calculates the Shannon entropy of the given string, while `entropy_per_byte()` attempts to normalize across strings of various lengths by returning the Shannon entropy divided by the length of the string.  Both return values are `float`.
 
-    >>> entropy("The quick brown fox jumped over the lazy dog.")
-    4.425186429663008
-    >>> entropy_per_byte("The quick brown fox jumped over the lazy dog.")
-    0.09833747621473352
+```python
+>>> entropy("The quick brown fox jumped over the lazy dog.")
+4.425186429663008
+>>> entropy_per_byte("The quick brown fox jumped over the lazy dog.")
+0.09833747621473352
+```
 
 The higher the value, the more data potentially embedded in it.
 
@@ -137,12 +162,16 @@ Sometimes you need to provide credentials for a service, but don't want to hard-
 
 Call it like so:
 
-    (username, password) = promptCreds()
+```python
+(username, password) = promptCreds()
+```
 
 You can change one or both of the username/password prompts by passing arguments:
 
-    (username, password) = promptCreds(uprompt="LAN ID: ",
-                                       pprompt="LAN Pass: ")
+```python
+(username, password) = promptCreds(uprompt="LAN ID: ",
+                                   pprompt="LAN Pass: ")
+```
 
 ### String Similarity
 
@@ -158,10 +187,14 @@ There are a number of different ways to compute similarity. `huntlib` provides t
 
 Here's an example:
 
-    >>> huntlib.edit_distance('svchost', 'scvhost')
-    1
+```python
+>>> huntlib.edit_distance('svchost', 'scvhost')
+1
+```
 
 You can specify a different algorithm using the `method` parameter. Valid methods are `levenshtein`, `damerau-levenshtein`, `hamming`, `jaro` and `jaro-winkler`. The default is `damerau-levenshtein`.
 
-    >>> huntlib.edit_distance('svchost', 'scvhost', method='levenshtein')
-    2
+```python
+>>> huntlib.edit_distance('svchost', 'scvhost', method='levenshtein')
+2
+```

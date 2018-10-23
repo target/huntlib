@@ -1,7 +1,10 @@
 from __future__ import print_function
+
+from huntlib.exceptions import *
 from builtins import object
 import splunklib.client as client
 import splunklib.results as results
+import splunklib.binding
 import pandas as pd
 from pandas.io.json import json_normalize
 from datetime import datetime
@@ -48,11 +51,15 @@ class SplunkDF(object):
         '''
         Create the SplunkDF object and login to the Splunk server.
         '''
-
-        self.splunk_conn = client.connect(host=host, username=username,
-                                          password=password, port=port,
-                                          autoLogin=True, max_count=0,
-                                          max_time=0)
+        try:
+            self.splunk_conn = client.connect(
+                                                host=host, username=username,
+                                                password=password, port=port,
+                                                autoLogin=True, max_count=0,
+                                                max_time=0
+            )
+        except splunklib.binding.AuthenticationError:
+            raise AuthenticationErrorSearchException("Login failed.")
 
     def search(self, spl, mode="normal", search_args=None, verbose=False,
                days=None, start_time=None, end_time=None, limit=None):
@@ -105,7 +112,7 @@ class SplunkDF(object):
             # Use the "export" job type, since that's the most reliable way to
             # return possibly large result sets, with no apparent limits
             export_results = self.splunk_conn.jobs.export(spl, **search_args)
-        
+
 
         reader = results.ResultsReader(export_results)
 

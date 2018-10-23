@@ -2,6 +2,7 @@ from huntlib.exceptions import *
 from builtins import object
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
+import elasticsearch.exceptions
 from pandas.io.json import json_normalize
 import pandas as pd
 from datetime import datetime, timedelta
@@ -115,14 +116,19 @@ class ElasticDF(object):
             s = s.filter('range', ** {date_field: {"gte": start_time, "lte": end_time}})
 
         # Add a search limit, if one is specified. Note that this is per-shard,
-        # not total results.
-        if limit:
-            s = s.params(size=limit)
-            response = s.execute()
-        else:
-            # Scan to explicitly return all results
-            response = s.execute()
-            s = s.scan()
+        # not total results.  Since this is where the search actually runs (the
+        # call to excute() does this) then we also have to handle authentication
+        # issues.
+        try:
+            if limit:
+                s = s.params(size=limit)
+                response = s.execute()
+            else:
+                # Scan to explicitly return all results
+                response = s.execute()
+                s = s.scan()
+        except elasticsearch.exceptions.AuthenticationException:
+            raise AuthenticationErrorSearchException("Login failed.")
 
         if response.success():
             for hit in s:
