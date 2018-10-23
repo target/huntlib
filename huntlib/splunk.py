@@ -43,6 +43,9 @@ class SplunkDF(object):
                         start_time="-2d@d",
                         end_time="@d"
         )
+
+    SplunkDF() will raise AuthenticationErrorSearchException() during
+    initialization in the event the server denied the supplied credentials.          
     '''
 
     splunk_conn = None # The connection to the Splunk server (Splunk client)

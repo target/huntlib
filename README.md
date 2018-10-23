@@ -69,6 +69,15 @@ df = e.search_df(
 )
 ```
 
+The `search` and `search_df` methods will raise `InvalidRequestSearchException`
+in the event that the search request is syntactically correct but is otherwise
+invalid. For example, if you request more results be returned than the server
+is able to provide. They will raise `AuthenticationErrorSearchException` in the
+event the server denied the credentials during login.  They can also raise an
+`UnknownSearchException` for other situations, in which case the exception
+message will contain the original error message returned by Elastic so you
+can figure out what went wrong.
+
 ## huntlib.splunk.SplunkDF
 
 The `SplunkDF` class search Splunk and returns the results as a Pandas DataFrame. This makes it easier to work with the search results using standard data analysis techniques.
@@ -139,7 +148,17 @@ df = s.search_df(
 )
 ```
 
-*NOTE: The value specified as the `limit` is also subject to a server-side max value. By default, this is 50000 and can be changed by editing limits.conf on the Splunk server. If you use the limit parameter, the number of search results you receive will be the lesser of the following values: 1) the actual number of results available, 2) the number you asked for with `limit`, 3) the server-side maximum result size.  If you omit limit altogether, you will get the **true** number of search results available without subject to additional limits.*
+*NOTE: The value specified as the `limit` is also subject to a server-side max
+value. By default, this is 50000 and can be changed by editing limits.conf on
+the Splunk server. If you use the limit parameter, the number of search results
+you receive will be the lesser of the following values: 1) the actual number of
+results available, 2) the number you asked for with `limit`, 3) the server-side
+maximum result size.  If you omit limit altogether, you will get the **true**
+number of search results available without subject to additional limits, though
+your search may take much longer to complete.*
+
+`SplunkDF` will raise `AuthenticationErrorSearchException` during initialization
+in the event the server denied the supplied credentials.  
 
 ## Miscellaneous Functions
 
