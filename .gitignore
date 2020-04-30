@@ -102,3 +102,6 @@ ENV/
 
 # Pytest unit tests
 .pytest*
+
+# Splunk Enterprise Dev License
+*.License
