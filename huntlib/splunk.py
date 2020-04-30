@@ -6,7 +6,6 @@ import splunklib.client as client
 import splunklib.results as results
 import splunklib.binding
 import pandas as pd
-from pandas.io.json import json_normalize
 from datetime import datetime
 
 class SplunkDF(object):
@@ -65,7 +64,8 @@ class SplunkDF(object):
             raise AuthenticationErrorSearchException("Login failed.")
 
     def search(self, spl, mode="normal", search_args=None, verbose=False,
-               days=None, start_time=None, end_time=None, limit=None):
+               days=None, start_time=None, end_time=None, limit=None,
+               fields="*"):
         '''
         Search Splunk and return the results as a list of dicts.
 
@@ -86,6 +86,10 @@ class SplunkDF(object):
                  (suppress these messages).
         limit: An integer describing the max number of search results to return.
         '''
+
+        if fields:
+            spl += f"| fields {fields}"
+
         if not search_args or not isinstance(search_args, dict):
             search_args = dict()
         search_args["search_mode"] = mode
@@ -127,7 +131,7 @@ class SplunkDF(object):
 
     def search_df(self, spl, mode="normal", search_args=None, verbose=False,
                   days=None, start_time=None, end_time=None, normalize=True,
-                  limit=None):
+                  limit=None, fields="*"):
         '''
         Search Splunk and return the results as a Pandas DataFrame.
 
@@ -157,11 +161,12 @@ class SplunkDF(object):
         for hit in self.search(spl=spl, mode=mode,
                                search_args=search_args, verbose=verbose,
                                days=days, start_time=start_time,
-                               end_time=end_time, limit=limit):
+                               end_time=end_time, limit=limit,
+                               fields=fields):
             results.append(hit)
 
         if normalize:
-            df = json_normalize(results)
+            df = pd.json_normalize(results)
         else:
             df = pd.DataFrame(results)
 
