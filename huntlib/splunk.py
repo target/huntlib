@@ -85,6 +85,10 @@ class SplunkDF(object):
                  by the search process will be printed to stdout.  The default is False
                  (suppress these messages).
         limit: An integer describing the max number of search results to return.
+                fields: A comma-separated string listing all of the fields to be returned in
+                the results. If not 'None', this is appended to the end of the 'spl'
+                query, like so: "| fields field1,field2,field3".  The default is '*',
+                meaning all fields.
         '''
 
         if fields:
@@ -155,6 +159,10 @@ class SplunkDF(object):
                    the dataframe. If False, there will be a single column for the
                    structure, with a JSON string encoding all the contents.
         limit: An integer describing the max number of search results to return.
+        fields: A comma-separated string listing all of the fields to be returned in
+                the results. If not 'None', this is appended to the end of the 'spl'
+                query, like so: "| fields field1,field2,field3".  The default is '*',
+                meaning all fields.
         '''
 
         results = list()
