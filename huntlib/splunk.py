@@ -59,17 +59,25 @@ class SplunkDF(object):
 
     splunk_conn = None # The connection to the Splunk server (Splunk client)
 
-    def __init__(self, host=None, username=None, password=None, port=8089):
+    def __init__(self, host=None, username=None, password=None, token=None, port=8089):
         '''
         Create the SplunkDF object and login to the Splunk server.
         '''
         try:
-            self.splunk_conn = client.connect(
+            if token:
+                self.splunk_conn = client.connect(
+                                                host=host, port=port,
+                                                token=token,
+                                                autoLogin=True, max_count=0,
+                                                max_time=0
+                )
+            else:
+                self.splunk_conn = client.connect(
                                                 host=host, username=username,
                                                 password=password, port=port,
                                                 autoLogin=True, max_count=0,
                                                 max_time=0
-            )
+                )
         except splunklib.binding.AuthenticationError:
             raise AuthenticationErrorSearchException("Login failed.")
 
