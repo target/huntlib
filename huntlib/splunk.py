@@ -6,7 +6,7 @@ import splunklib.client as client
 import splunklib.results as results
 import splunklib.binding
 import pandas as pd
-from pandas.io.json import json_normalize
+from pandas import json_normalize
 from datetime import datetime
 
 class SplunkDF(object):
