@@ -85,7 +85,7 @@ class SplunkDF(object):
                  by the search process will be printed to stdout.  The default is False
                  (suppress these messages).
         limit: An integer describing the max number of search results to return.
-                fields: A comma-separated string listing all of the fields to be returned in
+        fields: A comma-separated string listing all of the fields to be returned in
                 the results. If not 'None', this is appended to the end of the 'spl'
                 query, like so: "| fields field1,field2,field3".  The default is '*',
                 meaning all fields.
