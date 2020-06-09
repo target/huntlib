@@ -157,6 +157,23 @@ maximum result size.  If you omit limit altogether, you will get the **true**
 number of search results available without subject to additional limits, though
 your search may take much longer to complete.*
 
+Return only specified fields `NewProcessName` and `SubjectUserName`
+
+```python
+df = s.search_df(
+                  spl="search index=win_events EventCode=4688",
+                  fields="NewProcessName,SubjectUserName"
+)
+```
+
+*NOTE: By default, Splunk will only return the fields you reference in the
+search string (i.e. you must explicitly search on "NewProcessName" if you want
+that field in the results. Usually this is not what we want. When fields is not `None`, 
+the query string will be rewritten with "| fields <fields>" at the end (e.g., 
+`search index=win_events EventCode=4688 | fields NewProcessName,SubjectUserName`). This
+works fine for most simple cases, but if you have a more complex SPL query and it breaks, 
+simply set `fields=None` in your function call to avoid this behavior.*
+
 `SplunkDF` will raise `AuthenticationErrorSearchException` during initialization
 in the event the server denied the supplied credentials.  
 

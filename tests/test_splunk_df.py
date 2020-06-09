@@ -1,0 +1,112 @@
+#!/usr/bin/env python
+
+from huntlib.splunk import SplunkDF
+
+from unittest import TestCase
+
+class TestSplunkDF(TestCase):
+    _splunk_host = "localhost"
+    _splunk_port = 8089 # This is the API port, NOT the UI port
+    _splunk_user = "admin"
+    _splunk_pass = "testpass"
+
+    _splunk_conn = None
+
+    @classmethod
+    def setUpClass(self):
+        '''
+        Log into the splunk server once, and reuse that connection for all the 
+        tests in this module.
+        '''
+        s = SplunkDF(
+            host=self._splunk_host,
+            port=self._splunk_port,
+            username=self._splunk_user,
+            password=self._splunk_pass
+        )
+
+        self.assertNotEqual(
+            s, None, "SplunkDF() returned a None object at login.")
+
+        self._splunk_conn = s
+
+    def test_basic_search(self):
+        '''
+        Do the most basic search we can (all events in the index over all
+        time).  Then make sure we got the number of events we think we should
+        have. This version returns results as a generator.
+        '''
+        results = self._splunk_conn.search(
+            spl="search index=main"
+        )
+
+        l = list(results)
+
+        self.assertEqual(
+            len(l), 
+            5, 
+            "There should be exactly 5 search results."
+        )
+
+        for key in ['min', 'max', 'label', 'ts']:
+            self.assertTrue(
+                # Just test the first item in the results list
+                key in l[0].keys(),
+                f"Key '{key}' was not found in the search results.'"
+            )
+
+
+    def test_basic_search_df(self):
+        '''
+        Do the most basic search we can (all events in the index over all
+        time).  Then make sure we got the number of events we think we should
+        have and that all data columns are present. 
+        This version returns results as a pandas DataFrame().
+        '''
+        df = self._splunk_conn.search_df(
+            spl="search index=main"
+        )
+
+        self.assertEqual(
+            df.shape[0],
+             5, 
+             "There should be exactly 5 search results."
+        )
+
+        for col in ['min', 'max', 'label', 'ts']:
+            self.assertTrue(
+                col in df.columns,
+                f"Column '{col}' was not found in the search results.'"
+            )
+
+    def test_filtered_search(self):
+        '''
+        Test a simple SQL search and return a generator of results. Make sure we have 
+        the proper number of results.
+        '''
+
+        results = self._splunk_conn.search(
+            spl="search index=main min<=2"
+        )
+
+        self.assertEqual(
+            len(list(results)),
+            3,
+            "There should be exactly 3 search results with min <= 2"
+        )
+
+    def test_filtered_search_df(self):
+        '''
+        Test a simple SQL search and return a DataFrame of results. Make sure we have 
+        the proper number of results.
+        '''
+
+        df = self._splunk_conn.search_df(
+            spl="search index=main min<=2"
+        )
+
+        self.assertEqual(
+            df.shape[0],
+            3,
+            "There should be exactly 3 search results with min <= 2"
+        )
