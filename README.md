@@ -8,6 +8,8 @@ The `huntlib` module provides two major object classes as well as a few convenie
 
 * **ElasticDF**: Search Elastic and return results as a Pandas DataFrame
 * **SplunkDF**: Search Splunk and return results as a Pandas DataFrame
+* **data.read_json()**: Read one or more JSON files and return a single Pandas DataFrame
+* **data.read_csv()**: Read one or more CSV files and return a single Pandas DataFrame
 * **entropy()** / **entropy_per_byte()**: Calculate Shannon entropy
 * **promptCreds()**: Prompt for login credentials in the terminal or from within a Jupyter notebook.
 * **edit_distance()**: Calculate how "different" two strings are from each other
@@ -176,6 +178,46 @@ simply set `fields=None` in your function call to avoid this behavior.*
 
 `SplunkDF` will raise `AuthenticationErrorSearchException` during initialization
 in the event the server denied the supplied credentials.  
+
+## Data Module
+
+The `huntlib.data` module contains functions that make it easier to deal with data files.  
+
+### Reading Multiple Data Files
+
+`huntlib` provides two convenience functions to replace the standard Pandas `read_json()` and `read_csv()` functions.  These replacement functions work exaclty the same as their originals, and take all the same arguments.  The only difference is that they are capable of accepting a filename wildcard in addition to the name of a single file.  All files matching the wildcard expression will be read and returned as a single `DataFrame`.
+
+Start by importing the functions from the module:
+
+```python
+from huntlib.data import read_csv, read_json
+```
+
+Here's an example of reading a single JSON file, where each line is a separate JSON document:
+
+```python
+df = read_json("data.json", lines=True)
+```
+
+Similarly, this will read all JSON files in the current directory:
+
+```python
+df = read_json("*.json", lines=True)
+```
+
+The `read_csv` function works the same way:
+
+```python
+df = read_csv("data.csv)
+```
+
+or 
+
+```python
+df = read_csv("*.csv")
+```
+
+Consult the Pandas documentation for information on supported options for `read_csv()` and `read_json()`.
 
 ## Miscellaneous Functions
 

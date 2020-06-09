@@ -6,9 +6,10 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='huntlib',
-      version='0.3.1',
+      version='0.4.0',
       description='A Python library to help with some common threat hunting data analysis operations',
       long_description=long_description,
+      long_description_content_type="text/markdown",
       url='https://github.com/target/huntlib',
       author='David J. Bianco',
       author_email='david.bianco@target.com',
