@@ -3,4 +3,4 @@ splunk-sdk
 elasticsearch-dsl
 pandas
 numpy
-jellyfish
+jellyfish>=0.8.2
