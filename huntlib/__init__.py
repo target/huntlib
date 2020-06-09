@@ -6,7 +6,7 @@ from __future__ import division
 from builtins import input
 import getpass
 import math
-from jellyfish import levenshtein_distance, damerau_levenshtein_distance, hamming_distance, jaro_distance, jaro_winkler
+from jellyfish import levenshtein_distance, damerau_levenshtein_distance, hamming_distance, jaro_similarity, jaro_winkler_similarity
 import sys
 
 __all__ = ['elastic', 'splunk', 'entropy', 'entropy_per_byte', 'promptCreds', 'edit_distance']
@@ -72,8 +72,8 @@ def edit_distance(str1, str2, method="damerau-levenshtein"):
         "levenshtein":levenshtein_distance,
         "damerau-levenshtein":damerau_levenshtein_distance,
         "hamming":hamming_distance,
-        "jaro":jaro_distance,
-        "jaro-winkler":jaro_winkler
+        "jaro":jaro_similarity,
+        "jaro-winkler":jaro_winkler_similarity
     }
 
     if not method in list(algos.keys()):

@@ -21,14 +21,13 @@ setup(name='huntlib',
         'elasticsearch-dsl',
         'pandas',
         'numpy',
-        'jellyfish<0.7'
+        'jellyfish>=0.8.2'
       ],
       zip_safe=True,
       classifiers=[
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: MIT License"
       ]
 )
