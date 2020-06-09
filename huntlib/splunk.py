@@ -105,7 +105,7 @@ class SplunkDF(object):
                     end_time = end_time.isoformat()
                 search_args["latest_time"] = end_time
 
-        if limit != None:
+        if limit is not None:
             search_args['count'] = limit
             # use the "oneshot" job type, since it will accept the 'count'
             # argument. Downside is that it's subject to a max result set
