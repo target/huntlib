@@ -65,7 +65,7 @@ class SplunkDF(object):
 
     def search(self, spl, mode="normal", search_args=None, verbose=False,
                days=None, start_time=None, end_time=None, limit=None,
-               fields="*"):
+               fields="*", internal_fields=False):
         '''
         Search Splunk and return the results as a list of dicts.
 
@@ -89,6 +89,11 @@ class SplunkDF(object):
                 the results. If not 'None', this is appended to the end of the 'spl'
                 query, like so: "| fields field1,field2,field3".  The default is '*',
                 meaning all fields.
+        internal_fields: Control whether or not to return Splunk's internal fields.
+                If set to False, all fields with names beginning with an underscore 
+                will be removed from the results.  If set to True, nothing will be removed.
+                If this is a string, treat it as a comma-separated list of fields to remove
+                from the results. Default is False.
         '''
 
         if fields:
@@ -129,13 +134,24 @@ class SplunkDF(object):
 
         for res in reader:
             if isinstance(res, dict):
+                # Remove internal fields if requested
+                if internal_fields is True:
+                    pass
+                elif internal_fields is False:
+                    for field in [key for key in res.keys() if key.startswith('_')]:
+                        res.pop(field)
+                elif isinstance(internal_fields, str):
+                    for field in list(map(lambda x: x.strip(), internal_fields.split(','))):
+                        res.pop(field)
+                else:
+                    raise ValueError(f"internal_fields must be a boolean or a string, not {type(internal_fields)}.")
                 yield res
             elif isinstance(res, results.Message) and verbose:
                 print("Message: %s" % res)
 
     def search_df(self, spl, mode="normal", search_args=None, verbose=False,
                   days=None, start_time=None, end_time=None, normalize=True,
-                  limit=None, fields="*"):
+                  limit=None, fields="*", internal_fields=False):
         '''
         Search Splunk and return the results as a Pandas DataFrame.
 
@@ -163,6 +179,11 @@ class SplunkDF(object):
                 the results. If not 'None', this is appended to the end of the 'spl'
                 query, like so: "| fields field1,field2,field3".  The default is '*',
                 meaning all fields.
+        internal_fields: Control whether or not to return Splunk's internal fields.
+                If set to False, all fields with names beginning with an underscore 
+                will be removed from the results.  If set to True, nothing will be removed.
+                If this is a string, treat it as a comma-separated list of fields to remove
+                from the results. Default is False.
         '''
 
         results = list()
@@ -170,7 +191,7 @@ class SplunkDF(object):
                                search_args=search_args, verbose=verbose,
                                days=days, start_time=start_time,
                                end_time=end_time, limit=limit,
-                               fields=fields):
+                               fields=fields, internal_fields=internal_fields):
             results.append(hit)
 
         if normalize:

@@ -110,3 +110,57 @@ class TestSplunkDF(TestCase):
             3,
             "There should be exactly 3 search results with min <= 2"
         )
+
+    def test_internal_fields(self):
+        '''
+        Test to ensure the internal_fields parameter is working correctly. We
+        test search_df() since that actually calls search() underneath everything
+        else, so we're effectively testing both in one shot.
+        '''
+
+        # The default is to filter internal fields, so make sure we do that
+        df = self._splunk_conn.search_df(
+            spl="search index=main"
+        )
+
+        self.assertEqual(
+            df.shape[1],
+            21,
+            "Default call did not filter out internal fields correctly. Wrong number of columns."
+        )
+
+        # The same, but explicitly asking for internal field filtering
+        df = self._splunk_conn.search_df(
+            spl="search index=main",
+            internal_fields=False
+        )
+
+        self.assertEqual(
+            df.shape[1],
+            21,
+            "Explicit 'internal_fields=False' did not filter out internal fields correctly. Wrong number of columns."
+        )
+
+        # Explicitly ask for internal fields to be preserved
+        df = self._splunk_conn.search_df(
+            spl="search index=main",
+            internal_fields=True
+        )
+
+        self.assertEqual(
+            df.shape[1],
+            30,
+            "Explicit 'internal_fields=True' call did not return all internal fields correctly. Wrong number of columns."
+        )
+
+        # Filter only named fields, with spaces to make sure they're split and stripped correctly
+        df = self._splunk_conn.search_df(
+            spl="search index=main",
+            internal_fields=" _si, _time ,_sourcetype,_subsecond "
+        )
+
+        self.assertEqual(
+            df.shape[1],
+            26,
+            "Explicitly named internal_fields did not return the correct fields correctly. Wrong number of columns."
+        )
