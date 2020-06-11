@@ -96,6 +96,9 @@ s = SplunkDF(
 )
 ```
 
+`SplunkDF` will raise `AuthenticationErrorSearchException` during initialization
+in the event the server denied the supplied credentials.  
+
 Fetch all search results across all time
 
 ```python
@@ -176,8 +179,25 @@ the query string will be rewritten with "| fields <fields>" at the end (e.g.,
 works fine for most simple cases, but if you have a more complex SPL query and it breaks, 
 simply set `fields=None` in your function call to avoid this behavior.*
 
-`SplunkDF` will raise `AuthenticationErrorSearchException` during initialization
-in the event the server denied the supplied credentials.  
+Try to remove Splunk's "internal" fields from search results:
+
+```python
+df = s.search_df(
+    spl="search index=win_events EventCode=4688",
+    internal_fields=False
+)
+``` 
+This will remove such fields as `_time` and `_sourcetype` as well as any other field who's name begins with `_`.  This behavior occurs by default (`internal_fields` defaults to `False`), but you can disable it by using `internal_fields=True`.  
+
+Remove named field(s) from the search results:
+
+```python
+df = s.search_df(
+    spl="search index=win_events EventCode=4688",   internal_fields="_bkt,_cd,_indextime,_raw,_serial,_si,_sourcetype,_subsecond,_time"
+)
+```
+In the event you need more control over which "internal" fields to drop, you can pass a comma-separated list of field names (NOTE: these can be any field, not just Splunk internal fields).
+
 
 ## Data Module
 
