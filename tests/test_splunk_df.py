@@ -4,6 +4,8 @@ from huntlib.splunk import SplunkDF
 
 from unittest import TestCase
 
+from multiprocessing import cpu_count
+
 class TestSplunkDF(TestCase):
     _splunk_host = "localhost"
     _splunk_port = 8089 # This is the API port, NOT the UI port
@@ -164,3 +166,28 @@ class TestSplunkDF(TestCase):
             26,
             "Explicitly named internal_fields did not return the correct fields correctly. Wrong number of columns."
         )
+
+    def test_basic_search_df_parallel(self):
+        '''
+        Do the most basic search we can (all events in the index over all
+        time).  Then make sure we got the number of events we think we should
+        have and that all data columns are present. 
+        This version returns results as a pandas DataFrame().
+        '''
+        df = self._splunk_conn.search_df(
+            spl="search index=main",
+            processes=cpu_count(),
+            limit=10
+        )
+
+        self.assertEqual(
+            df.shape[0],
+            5,
+            "There should be exactly 5 search results."
+        )
+
+        for col in ['min', 'max', 'label', 'ts']:
+            self.assertTrue(
+                col in df.columns,
+                f"Column '{col}' was not found in the search results.'"
+            )
