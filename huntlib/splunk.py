@@ -1,12 +1,21 @@
 from __future__ import print_function
 
-from huntlib.exceptions import *
+import multiprocessing
+import multiprocessing.managers
+import platform
+import time
 from builtins import object
+from datetime import datetime
+from multiprocessing import (Manager, Process, Queue, cpu_count,
+                             set_start_method)
+from sys import stderr
+
+import pandas as pd
 import splunklib.client as client
 import splunklib.results as results
-import splunklib.binding
-import pandas as pd
-from datetime import datetime
+
+from huntlib.exceptions import *
+
 
 class SplunkDF(object):
     '''
@@ -63,9 +72,69 @@ class SplunkDF(object):
         except splunklib.binding.AuthenticationError:
             raise AuthenticationErrorSearchException("Login failed.")
 
+    def _results_worker(self, offset_queue, page_size, search_results):
+
+        while not offset_queue.empty():
+            offset = offset_queue.get()
+
+            paginate_args = dict(
+                count=page_size,
+                offset=offset
+            )
+
+            page_results = self._job.results(**paginate_args)
+
+            for result in results.ResultsReader(page_results):
+                if isinstance(result, dict):
+                    search_results.append(result)
+
+
+    def _search_parallel(self, spl, search_args, page_size=1000, processes=4):
+
+        search_args['exec_mode'] = 'blocking'
+        search_args['search_mode'] = 'normal'
+
+        manager = Manager()
+        search_results = manager.list()
+        offset_queue = Queue()
+
+        self._job = self.splunk_conn.jobs.create(
+            spl,
+            **search_args
+        )
+
+        result_count = int(self._job['resultCount'])
+
+        offset = 0
+
+        while (offset < result_count):
+            offset_queue.put(offset)
+            offset += page_size
+
+        workers = list()
+
+        for _ in range(processes):
+            p = Process(
+                target=self._results_worker,
+                args=(
+                    offset_queue,
+                    page_size,
+                    search_results
+                )
+            )
+
+            workers.append(p)
+            p.start()
+
+        for p in workers:
+            p.join()
+
+        return list(search_results)
+
+
     def search(self, spl, mode="normal", search_args=None, verbose=False,
                days=None, start_time=None, end_time=None, limit=None,
-               fields="*", internal_fields=False):
+               fields="*", internal_fields=False, processes=None):
         '''
         Search Splunk and return the results as a list of dicts.
 
@@ -118,40 +187,44 @@ class SplunkDF(object):
                     end_time = end_time.isoformat()
                 search_args["latest_time"] = end_time
 
-        if limit:
-            search_args['count'] = limit
-            # use the "oneshot" job type, since it will accept the 'count'
-            # argument. Downside is that it's subject to a max result set
-            # specified in limits.conf on the server, though.
-            export_results = self.splunk_conn.jobs.oneshot(spl, **search_args)
-        else:
-            # Use the "export" job type, since that's the most reliable way to
-            # return possibly large result sets, with no apparent limits
-            export_results = self.splunk_conn.jobs.export(spl, **search_args)
-
-
-        reader = results.ResultsReader(export_results)
-
-        for res in reader:
-            if isinstance(res, dict):
-                # Remove internal fields if requested
-                if internal_fields is True:
-                    pass
-                elif internal_fields is False:
-                    for field in [key for key in res.keys() if key.startswith('_')]:
-                        res.pop(field)
-                elif isinstance(internal_fields, str):
-                    for field in list(map(lambda x: x.strip(), internal_fields.split(','))):
-                        res.pop(field)
-                else:
-                    raise ValueError(f"internal_fields must be a boolean or a string, not {type(internal_fields)}.")
+        if processes:
+            search_args['max_count'] = limit
+            for res in self._search_parallel(spl, search_args):
                 yield res
-            elif isinstance(res, results.Message) and verbose:
-                print("Message: %s" % res)
+        else:
+            if limit:
+                search_args['count'] = limit
+                # use the "oneshot" job type, since it will accept the 'count'
+                # argument. Downside is that it's subject to a max result set
+                # specified in limits.conf on the server, though.
+                search_results = self.splunk_conn.jobs.oneshot(spl, **search_args)
+            else:
+                # Use the "export" job type, since that's the most reliable way to
+                # return possibly large result sets, with no apparent limits
+                search_results = self.splunk_conn.jobs.export(spl, **search_args)
+
+            reader = results.ResultsReader(search_results)
+
+            for res in reader:
+                if isinstance(res, dict):
+                    # Remove internal fields if requested
+                    if internal_fields is True:
+                        pass
+                    elif internal_fields is False:
+                        for field in [key for key in res.keys() if key.startswith('_')]:
+                            res.pop(field)
+                    elif isinstance(internal_fields, str):
+                        for field in list(map(lambda x: x.strip(), internal_fields.split(','))):
+                            res.pop(field)
+                    else:
+                        raise ValueError(f"internal_fields must be a boolean or a string, not {type(internal_fields)}.")
+                    yield res
+                elif isinstance(res, results.Message) and verbose:
+                    print("Message: %s" % res)
 
     def search_df(self, spl, mode="normal", search_args=None, verbose=False,
                   days=None, start_time=None, end_time=None, normalize=True,
-                  limit=None, fields="*", internal_fields=False):
+                  limit=None, fields="*", internal_fields=False, processes=None):
         '''
         Search Splunk and return the results as a Pandas DataFrame.
 
@@ -191,7 +264,8 @@ class SplunkDF(object):
                                search_args=search_args, verbose=verbose,
                                days=days, start_time=start_time,
                                end_time=end_time, limit=limit,
-                               fields=fields, internal_fields=internal_fields):
+                               fields=fields, internal_fields=internal_fields, 
+                               processes=processes):
             results.append(hit)
 
         if normalize:
@@ -200,3 +274,4 @@ class SplunkDF(object):
             df = pd.DataFrame(results)
 
         return df
+
