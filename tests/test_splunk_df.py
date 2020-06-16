@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
-from huntlib.splunk import SplunkDF
-
+import os
+import unittest
+from multiprocessing import cpu_count
 from unittest import TestCase
 
-from multiprocessing import cpu_count
+from huntlib.splunk import SplunkDF
+
 
 class TestSplunkDF(TestCase):
     _splunk_host = "localhost"
@@ -191,3 +193,28 @@ class TestSplunkDF(TestCase):
                 col in df.columns,
                 f"Column '{col}' was not found in the search results.'"
             )
+
+    @unittest.skipUnless("HUNTLIB_TEST_EXTENDED" in os.environ, "Skipping test_large_search() because it takes a long time...")
+    def test_large_search_df(self):
+        '''
+        Do a basic search that should return a lot of rows.  This requires
+        you to have loaded the "bigdata" index with data.
+
+        We skip this by default because it takes a very long time, but you can
+        re-enable it by setting the HUNTLIB_TEST_EXTENDED environment variable.
+        '''
+        df = self._splunk_conn.search_df(
+            spl="search index=bigdata",
+            fields='val'
+        )
+
+        self.assertEqual(
+            df.shape[0],
+            1000000,
+            "Wrong number of search results."
+        )
+
+        self.assertTrue(
+            "val" in df.columns,
+            "Column 'val' was not found in the search results."
+        )
