@@ -188,7 +188,8 @@ class SplunkDF(object):
                 search_args["latest_time"] = end_time
 
         if processes:
-            search_args['max_count'] = limit
+            if limit:
+                search_args['max_count'] = limit
             for res in self._search_parallel(spl, search_args):
                 yield res
         else:
