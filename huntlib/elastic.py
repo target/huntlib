@@ -6,13 +6,6 @@ import elasticsearch.exceptions
 import pandas as pd
 from datetime import datetime, timedelta
 
-import multiprocessing
-from multiprocessing import Pool, Manager, Queue, Process
-
-import uuid
-
-from sys import stderr
-
 class ElasticDF(object):
     '''
     The ElasticDF() class searches Elastic and returns results as a Pandas
@@ -73,24 +66,9 @@ class ElasticDF(object):
             http_auth=(username, password)
         )
 
-    def _search_parallel_worker(self, s, processes, slice_queue, search_results):
-
-        if not slice_queue.empty():
-            slice_id = slice_queue.get()
-            s = s.extra(
-                    slice={
-                        "id": slice_id,
-                        "max": processes
-                    }
-                )
-
-            for res in s.scan():
-                search_results.append(res)
-
     def search(self, lucene, index="*", doctype="doc", fields=None,
                date_field="@timestamp", days=None, start_time=None,
-               end_time=None, limit=None, processes=1, page_size=1000, 
-               scroll_window="10m"):
+               end_time=None, limit=None):
         '''
         Search Elastic and return the results as a list of dicts.
 
@@ -138,10 +116,6 @@ class ElasticDF(object):
         elif start_time and end_time:
             s = s.filter('range', ** {date_field: {"gte": start_time, "lte": end_time}})
 
-        # Set up scrolling if we're using multiprocessing
-        if processes > 1:
-            s = s.params(scroll=scroll_window)
-
         # Add a search limit, if one is specified. Note that this is per-shard,
         # not total results.  Since this is where the search actually runs (the
         # call to excute() does this) then we also have to handle authentication
@@ -153,43 +127,13 @@ class ElasticDF(object):
             else:
                 # Scan to explicitly return all results
                 response = s.execute()
+                s = s.scan()
         except elasticsearch.exceptions.AuthenticationException:
             raise AuthenticationErrorSearchException("Login failed.")
 
         if response.success():
-
-            if processes > 1:
-                manager = Manager()
-                search_results = manager.list()
-
-                slice_queue = Queue()
-                for slice_id in list(range(processes)):
-                    slice_queue.put(slice_id)
-
-                workers = list()
-
-                for _ in range(processes):
-                    p = Process(
-                        target=self._search_parallel_worker,
-                        args=(
-                            s,
-                            processes,
-                            slice_queue,
-                            search_results
-                        )
-                    )
-
-                    workers.append(p)
-                    p.start()
-
-                for p in workers:
-                    p.join()
-
-                for res in search_results:
-                    yield res.to_dict()
-            else:
-                for hit in s.scan():
-                    yield hit.to_dict()
+            for hit in s:
+                yield hit.to_dict()
         else:
             reason = response._shards.failures[0].reason
             if "Result window is too large" in reason['reason']:
@@ -199,8 +143,7 @@ class ElasticDF(object):
 
     def search_df(self, lucene, index="*", doctype="doc", fields=None,
                   date_field="@timestamp", days=None, start_time=None,
-                  end_time=None, normalize=True, limit=None, processes=1,
-                  page_size=1000, scroll_window="10m"):
+                  end_time=None, normalize=True, limit=None):
         '''
         Search Elastic and return the results as a Pandas DataFrame.
 
@@ -231,8 +174,7 @@ class ElasticDF(object):
         for hit in self.search(lucene=lucene, index=index, doctype=doctype,
                                fields=fields, date_field=date_field, days=days,
                                start_time=start_time, end_time=end_time,
-                               limit=limit, processes=processes, page_size=page_size,
-                               scroll_window=scroll_window):
+                               limit=limit):
             results.append(hit)
 
         if normalize:

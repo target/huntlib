@@ -114,28 +114,3 @@ class TestElasticDF(TestCase):
             3,
             "There should be exactly 3 search results with min <= 2"
         )
-
-    def test_basic_search_df_parallel(self):
-        '''
-        Do the most basic search we can (all events in the index over all
-        time).  Then make sure we got the number of events we think we should
-        have and that all data columns are present. 
-        This version returns results as a pandas DataFrame().
-        '''
-        df = self._es_conn.search_df(
-            lucene="*",
-            index="testdata",
-            processes=2
-        )
-
-        self.assertEqual(
-            df.shape[0],
-            5,
-            "There should be exactly 5 search results."
-        )
-
-        for col in ['min', 'max', 'label', 'ts']:
-            self.assertTrue(
-                col in df.columns,
-                f"Column '{col}' was not found in the search results.'"
-            )
