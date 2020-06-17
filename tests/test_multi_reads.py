@@ -11,8 +11,8 @@ class TestMultiReads(TestCase):
         (rows, cols) = df.shape
 
         self.assertEqual(cols, 6, "The resulting DataFrame had the wrong number of columns.")
-        self.assertEqual(rows, 1000015, "The resulting DataFrame had the wrong number of rows.")
-        self.assertEqual(df.index.nunique(), 1000015, "DataFrame index values are not unique.")
+        self.assertEqual(rows, 3000015, "The resulting DataFrame had the wrong number of rows.")
+        self.assertEqual(df.index.nunique(), 3000015, "DataFrame index values are not unique.")
 
     def test_read_csv(self):
         df = huntlib.data.read_csv("support/*.csv")
