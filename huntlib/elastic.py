@@ -89,7 +89,8 @@ class ElasticDF(object):
 
     def search(self, lucene, index="*", doctype="doc", fields=None,
                date_field="@timestamp", days=None, start_time=None,
-               end_time=None, limit=None, processes=1, page_size=1000):
+               end_time=None, limit=None, processes=1, page_size=1000, 
+               scroll_window="10m"):
         '''
         Search Elastic and return the results as a list of dicts.
 
@@ -139,7 +140,7 @@ class ElasticDF(object):
 
         # Set up scrolling if we're using multiprocessing
         if processes > 1:
-            s = s.params(scroll="10m")
+            s = s.params(scroll=scroll_window)
 
         # Add a search limit, if one is specified. Note that this is per-shard,
         # not total results.  Since this is where the search actually runs (the
@@ -199,7 +200,7 @@ class ElasticDF(object):
     def search_df(self, lucene, index="*", doctype="doc", fields=None,
                   date_field="@timestamp", days=None, start_time=None,
                   end_time=None, normalize=True, limit=None, processes=1,
-                  page_size=1000):
+                  page_size=1000, scroll_window="10m"):
         '''
         Search Elastic and return the results as a Pandas DataFrame.
 
@@ -230,7 +231,8 @@ class ElasticDF(object):
         for hit in self.search(lucene=lucene, index=index, doctype=doctype,
                                fields=fields, date_field=date_field, days=days,
                                start_time=start_time, end_time=end_time,
-                               limit=limit, processes=processes, page_size=page_size):
+                               limit=limit, processes=processes, page_size=page_size,
+                               scroll_window=scroll_window):
             results.append(hit)
 
         if normalize:
