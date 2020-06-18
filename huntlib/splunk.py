@@ -15,7 +15,7 @@ import splunklib.client as client
 import splunklib.results as results
 import splunklib.binding
 
-from huntlib.exceptions import *
+from huntlib.exceptions import AuthenticationErrorSearchException
 
 
 class SplunkDF(object):

@@ -1,4 +1,4 @@
-from huntlib.exceptions import *
+from huntlib.exceptions import AuthenticationErrorSearchException, InvalidRequestSearchException, UnknownSearchException
 from builtins import object
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
