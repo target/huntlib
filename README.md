@@ -198,6 +198,27 @@ df = s.search_df(
 ```
 In the event you need more control over which "internal" fields to drop, you can pass a comma-separated list of field names (NOTE: these can be any field, not just Splunk internal fields).
 
+Splunk's Python API can be quite slow, so to speed things up you may elect to spread the result retrieval among multiple cores.  The default is to use one (1) extra core, but you can use the `processes` argument to `search()` or `search_df()` to set this higher if you like.  
+
+```python
+df = s.search_df(
+    spl="search index=win_events EventCode=4688", 
+    processes=4
+)
+```
+
+If you prefer to use all your cores, try something like:
+
+```python
+from multiprocessing import cpu_count
+
+df = s.search_df(
+    spl="search index=win_events EventCode=4688",
+    processes=cpu_count()
+)
+```
+
+*NOTE: You may have to experiment to find the optimal number of parallel processes for your specific environment. Maxing out the number of workers doesn't always give the best performance.*
 
 ## Data Module
 
