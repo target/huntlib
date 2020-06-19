@@ -8,6 +8,8 @@ import getpass
 import math
 from jellyfish import levenshtein_distance, damerau_levenshtein_distance, hamming_distance, jaro_similarity, jaro_winkler_similarity
 import sys
+import platform
+import multiprocessing
 
 __all__ = ['entropy', 'entropy_per_byte', 'promptCreds', 'edit_distance']
 
@@ -92,3 +94,13 @@ def edit_distance(str1, str2, method="damerau-levenshtein"):
         str2 = unicode(str2)
 
     return distance_function(str1, str2)
+
+
+# First time initialization on import
+
+# Set Mac OS systems to use the older "fork" method of spawning 
+# procs for the multiprocessing module.  For some reason the newer
+# methods don't work (EOFErrors when creating Manager() objects)
+system_type = platform.system()
+if system_type == "Darwin":
+    multiprocessing.set_start_method('fork')
