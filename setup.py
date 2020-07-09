@@ -22,7 +22,8 @@ setup(name='huntlib',
         'elasticsearch-dsl',
         'pandas',
         'numpy',
-        'jellyfish>=0.8.2'
+        'jellyfish>=0.8.2',
+        'domaintools_api'
       ],
       zip_safe=True,
       classifiers=[
