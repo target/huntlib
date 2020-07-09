@@ -159,7 +159,7 @@ class TestDomainTools(TestCase):
 
         self.assertEqual(
             enriched_df.shape[1],
-            74,
+            76,
             "Enriched DataFrame does not have the correct number of columns."
         )
 
@@ -187,4 +187,39 @@ class TestDomainTools(TestCase):
             len(domains),
             0,
             "The brand_monitor search returned no results."
+        )
+
+    def test_domain_reputation(self):
+
+        # We can't predict a given domain name's exact reputation for
+        # testing purposes, but we can make a couple of assumptions.
+        
+        # ASSUMPTION 1: We're using the domaintools API, and their own 
+        # domain is whitelisted to give a consistent 0.0 risk score.
+        risk = self._handle.domain_reputation('domaintools.com')
+
+        self.assertEqual(
+            risk['risk_score'],
+            0.0,
+            "The 'domaintools.com' domain should have a 0.0 risk score."
+        )
+
+        # ASSUMPTION 2: Any given domain in a 'risky' TLD should have a positive, 
+        # non-zero score
+        risk = self._handle.domain_reputation('domaintools.xyz')
+
+        self.assertGreater(
+            risk['risk_score'],
+            0.0,
+            "The non-existent domain should have a non-zero risk score."
+        )
+
+        # Finally, we just need to test that we get an empty dict when we pass in
+        # an IP, since the API endpoint doesn't actually support IPs
+        risk = self._handle.domain_reputation('8.8.8.8')
+
+        self.assertDictEqual(
+            risk,
+            {},
+            "Domain reputation lookup on an IP failed to return an empty dict."
         )
