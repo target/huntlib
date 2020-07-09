@@ -6,10 +6,13 @@ import numpy as np
 from configparser import ConfigParser
 
 from domaintools import API
+from domaintools.exceptions import BadRequestException, NotFoundException
 
 from tqdm import tqdm
 
 import os.path
+
+from functools import reduce
 
 __all__ = ['DomainTools']
 
@@ -114,7 +117,7 @@ class DomainTools(object):
         if not query:
             raise ValueError("You must supply either a domain or an IP address.")
         elif not isinstance(query, str):
-            raise ValueError("The query parameter must be either a 'str' or a 'bytes' object.")
+            raise ValueError("The query parameter must be a string.")
         
         whois_info = dict(list(self._handle.whois(query, **kwargs)))
 
@@ -125,16 +128,14 @@ class DomainTools(object):
         if not query:
             raise ValueError(
                 "You must supply either a domain or an IP address.")
-        elif not (isinstance(query, str) or isinstance(query, bytes)):
+        elif not isinstance(query, str):
             raise ValueError(
-                "The query parameter must be either a 'str' or a 'bytes' object.")
+                "The query parameter must be a string.")
 
         whois_info = dict(list(self._handle.parsed_whois(query, **kwargs)))
         
         if flatten:
             # Normalize the nested dictionary keys into a single level.
-            # This is a built-in method of the DomainTools ParsedWhois() 
-            # results class.
             whois_info = pd.json_normalize(whois_info).iloc[0].to_dict()
 
         return whois_info
@@ -148,6 +149,33 @@ class DomainTools(object):
             raise ValueError("The 'query' parameter must be either a string or a list of strings.")
 
         return list(self._handle.brand_monitor(query, **kwargs))
+
+    def domain_profile(self, query=None, flatten=False, **kwargs):
+        if not query:
+            raise ValueError("You must specify a query domain.")
+        elif not isinstance(query, str):
+            raise ValueError("query parameter must be a string.")
+
+        profile = dict(list(self._handle.domain_profile(query, **kwargs)))
+
+        if flatten:
+            # Normalize the nested dictionary keys into a single level.
+            profile = pd.json_normalize(profile).iloc[0].to_dict()
+
+        return profile
+
+    def domain_reputation(self, domain=None, reasons=False, **kwargs):
+        if not domain:
+            raise ValueError("You must specify a query domain.")
+        elif not isinstance(domain, str):
+            raise ValueError("The domain parameter must be a string.")
+
+        try:
+            reputation = dict(list(self._handle.reputation(domain, reasons, **kwargs)))
+        except (BadRequestException, NotFoundException):
+            return dict()
+
+        return reputation
 
     def enrich(self, df=None, column=None, prefix='dt_whois.', progress_bar=False, fields=None):
         if df is None:
@@ -168,22 +196,48 @@ class DomainTools(object):
         if fields is not None and not isinstance(fields, list):
             raise ValueError("The 'fields' parameter must be a list of strings.")
 
+        # WHOIS Enrichment
         if progress_bar:
             tqdm.pandas(desc='Enriching WHOIS')
             apply_func = df[column].progress_apply
         else:
             apply_func = df[column].apply
 
-        # Enrich with parsed WHOIS data
-        enrichment_df = apply_func(
+        whois_df = apply_func(
             lambda d: pd.Series(self.parsed_whois(d, flatten=True))
+        )
+
+        whois_df = whois_df.add_prefix('dt_whois.')
+
+        # Domain reputation enrichment
+        if progress_bar:
+            tqdm.pandas(desc='Enriching Reputation')
+            apply_func = df[column].progress_apply
+        else:
+            apply_func = df[column].apply
+
+        reputation_df = apply_func(
+            lambda d: pd.Series(self.domain_reputation(d), dtype=object)
+        )
+
+        reputation_df = reputation_df.add_prefix('dt_reputation.')
+
+        # Combine all the enrichment data into a single DataFrame
+        data_dfs = [whois_df, reputation_df]
+
+        enrichment_df = reduce(
+            lambda left, right: pd.merge(
+                left, 
+                right, 
+                left_index=True, 
+                right_index=True
+            ), 
+            data_dfs
         )
 
         # If we asked for only certain fields, filter for those
         if fields:
             enrichment_df = enrichment_df[fields]
-
-        enrichment_df = enrichment_df.add_prefix(prefix)
 
         df = df.merge(
             enrichment_df,       
