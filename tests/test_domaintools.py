@@ -153,13 +153,13 @@ class TestDomainTools(TestCase):
 
     def test_enrich(self):
 
-        df = pd.DataFrame(['google.com', 'microsoft.com', '8.8.8.8'], columns=["domain"])
+        df = pd.DataFrame(['google.com', 'microsoft.com', '8.8.8.8', 'wstwc.cn'], columns=["domain"])
 
         enriched_df = self._handle.enrich(df, column='domain')
 
         self.assertEqual(
             enriched_df.shape[1],
-            76,
+            87,
             "Enriched DataFrame does not have the correct number of columns."
         )
 
@@ -222,4 +222,19 @@ class TestDomainTools(TestCase):
             risk,
             {},
             "Domain reputation lookup on an IP failed to return an empty dict."
+        )
+
+    def test_risk(self):
+        risk = self._handle.risk('wstwc.cn')
+
+        self.assertIsInstance(
+            risk,
+            dict,
+            "Risk scoring should have returned a dict."
+        )
+
+        self.assertIn(
+            "proximity",
+            risk,
+            "The returned risk data did not contain a 'proximity' risk value."
         )
