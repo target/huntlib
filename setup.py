@@ -23,7 +23,8 @@ setup(name='huntlib',
         'pandas',
         'numpy',
         'jellyfish>=0.8.2',
-        'domaintools_api'
+        'domaintools_api',
+        'tqdm'
       ],
       zip_safe=True,
       classifiers=[
