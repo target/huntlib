@@ -156,7 +156,11 @@ class DomainTools(object):
         elif not isinstance(query, str):
             raise ValueError("query parameter must be a string.")
 
-        profile = dict(list(self._handle.domain_profile(query, **kwargs)))
+        profile = dict(
+            list(
+                self._handle.domain_profile(query, **kwargs)
+            )
+        )
 
         if flatten:
             # Normalize the nested dictionary keys into a single level.
@@ -171,12 +175,33 @@ class DomainTools(object):
             raise ValueError("The domain parameter must be a string.")
 
         try:
-            reputation = dict(list(self._handle.reputation(domain, reasons, **kwargs)))
+            reputation = dict(
+                list(
+                    self._handle.reputation(domain, reasons, **kwargs)
+                )
+            )
         except (BadRequestException, NotFoundException):
             return dict()
 
         return reputation
 
+    def risk(self, domain=None,  **kwargs):
+        if not domain:
+            raise ValueError("You must specify a query domain.")
+        elif not isinstance(domain, str):
+            raise ValueError("The domain parameter must be a string.")
+
+        try:
+            risk = self._handle.risk(domain, **kwargs)
+            # Turn the list of individual dictionaries (with duplicate
+            # keys) into a single dictionary.
+            risk = {x['name']: x['risk_score'] for x in risk}
+        except (BadRequestException, NotFoundException):
+            return dict()
+
+
+        return risk
+    
     def enrich(self, df=None, column=None, prefix='dt_whois.', progress_bar=False, fields=None):
         if df is None:
             raise ValueError("You must supply a pandas DataFrame in the 'df' parameter.")
@@ -222,8 +247,25 @@ class DomainTools(object):
 
         reputation_df = reputation_df.add_prefix('dt_reputation.')
 
+        # Domain risk score enrichment
+        if progress_bar:
+            tqdm.pandas(desc='Enriching Risk Scores')
+            apply_func = df[column].progress_apply
+        else:
+            apply_func = df[column].apply
+
+        risk_score_df = apply_func(
+            lambda d: pd.Series(self.risk(d), dtype=object)
+        )
+
+        risk_score_df = risk_score_df.add_prefix('dt_risk.')
+
         # Combine all the enrichment data into a single DataFrame
-        data_dfs = [whois_df, reputation_df]
+        data_dfs = [
+            whois_df, 
+            reputation_df, 
+            risk_score_df
+        ]
 
         enrichment_df = reduce(
             lambda left, right: pd.merge(
