@@ -8,7 +8,7 @@ from configparser import ConfigParser
 from domaintools import API
 from domaintools.exceptions import BadRequestException, NotFoundException
 
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 import os.path
 
@@ -249,7 +249,14 @@ class DomainTools(object):
         elif not isinstance(query, str):
             raise ValueError("The query parameter must be a string.")
         
-        whois_info = dict(list(self._handle.whois(query, **kwargs)))
+        try:
+            whois_info = dict(
+                list(
+                    self._handle.whois(query, **kwargs)
+                )
+            )
+        except (BadRequestException, NotFoundException):
+            return dict()
 
         return whois_info
 
@@ -329,7 +336,15 @@ class DomainTools(object):
             raise ValueError(
                 "The query parameter must be a string.")
 
-        whois_info = dict(list(self._handle.parsed_whois(query, **kwargs)))
+        try:
+            whois_info = dict(
+                list(
+                    self._handle.parsed_whois(query, **kwargs)
+                )
+            )
+        except (BadRequestException, NotFoundException):
+            return dict()
+
         
         if flatten:
             # Normalize the nested dictionary keys into a single level.
@@ -607,7 +622,7 @@ class DomainTools(object):
             apply_func = df[column].apply
 
         whois_df = apply_func(
-            lambda d: pd.Series(self.parsed_whois(d, flatten=True))
+            lambda d: pd.Series(self.parsed_whois(d, flatten=True), dtype=object)
         )
 
         whois_df = whois_df.add_prefix('dt_whois.')
