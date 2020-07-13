@@ -26,7 +26,6 @@ class DomainTools(object):
 
     def __init__(self, *args, **kwargs):
 
-        # FIXME: this should be a huntlib-wide config capability
         # Read our config file, if it exists
         config = ConfigParser()
         config.read(self._DEFAULT_CONFIG_FILE)
@@ -44,16 +43,21 @@ class DomainTools(object):
         elif config.has_option('domaintools', 'api_key'):
             api_key = config.get('domaintools', 'api_key')
 
+        # Remove these from kwargs, so we don't have duplicate args.
+        kwargs.pop('api_username', None)
+        kwargs.pop('api_key', None)
+
         self.authenticate(
             api_username=api_username,
-            api_key=api_key
+            api_key=api_key,
+            **kwargs
         )
 
         self._account_information = self.account_information(force_refresh=True)
         self._available_api_calls = self.available_api_calls(force_refresh=True)
 
 
-    def authenticate(self, api_username="", api_key=""):
+    def authenticate(self, api_username="", api_key="", **kwargs):
         """
         Authenticate to the DomainTools API. 
 
@@ -80,7 +84,8 @@ class DomainTools(object):
         # Actually authenticate now
         self._handle = API(
             api_username,
-            api_key
+            api_key,
+            **kwargs
         )
 
 
