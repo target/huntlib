@@ -17,6 +17,24 @@ from functools import reduce
 __all__ = ['DomainTools']
 
 class DomainTools(object):
+    '''
+    The DomainTools class allows you to easily perform some common types of calls
+    to the DomainTools API.  It uses their official `domaintools_api` Python module
+    to do most of the work but is not a complete replacement for that module. In
+    particular, this class concentrates on a few calls that are most relevant for
+    data analytic style threat hunting (risk & reputation scores, WHOIS info, etc).
+
+    This most methods pass through any kwargs to the underlying domaintools methods, 
+    with one important exception: the class consults the user's ~/.huntlibrc 
+    (if present) to determine the API username and key so you don't always have to provide
+    them during authentication.
+
+    :param api_username: The API authentication username (OPTIONAL)
+    :type api_username: str
+    :param api_key: The API authentication key (OPTIONAL)
+    :type api_key: str
+    :param `**kwargs`: Additional keyword args are passed to the underlying domaintools module init
+    '''
 
     _DEFAULT_CONFIG_FILE = os.path.expanduser("~/.huntlibrc")
 
@@ -59,13 +77,17 @@ class DomainTools(object):
 
     def authenticate(self, api_username="", api_key="", **kwargs):
         """
-        Authenticate to the DomainTools API. 
+        Authenticate to the DomainTools API. Calling this function directly is OK,
+        but you won't get the benefit of consulting ~/.huntlibrc for default creds
+        if you do.  
 
-        Params:
-          api_username: a string containing the account name to log in with
-          api_key: a string containing the API secret key (password) to log in with
+        :param api_username: The API authentication username (OPTIONAL)
+        :type api_username: str
+        :param api_key: The API authentication key (OPTIONAL)
+        :type api_key: str
+        :param `**kwargs`: Additional arguments to pass to the underlying domaintools module
 
-        Errors:
+        :Exceptions:
           Will raise ValueError if the api_username or api_key are not provided
           or are of the wrong type.
         """
@@ -90,6 +112,43 @@ class DomainTools(object):
 
 
     def account_information(self, force_refresh=False, **kwargs):
+        '''
+        Return a dict containing information about limits and usage of the various
+        domaintools API calls for the authenticated API user.
+
+        :param force_refresh: A boolean controlling whether or not to refresh the cached info
+        :type force_refresh: bool
+        :param `**kwargs`: Additional arguments to pass to the underlying domaintools module
+
+        :Return Value:
+        A single dict, where each key is the name of an endpoint from the underlying
+        domaintools API, and the values are dicts containing detailed about that endpoint.
+
+        For example:
+
+        {
+            'domain-profile': {
+                'per_month_limit': None, 
+                'per_minute_limit': '180', 
+                'absolute_limit': None, 
+                'usage': {
+                    'today': '0', 
+                    'month': '100'
+                }, 
+                'expiration_date': '2020-12-31'
+            }, 
+            'whois': {
+                'per_month_limit': None, 
+                'per_minute_limit': '180', 
+                'absolute_limit': None, 
+                'usage': {
+                    'today': '9', 
+                    'month': '997'
+                }, 
+                'expiration_date': '2020-12-31'
+            }
+        }
+        '''
 
         if self._account_information and not force_refresh:
             return self._account_information
@@ -106,6 +165,27 @@ class DomainTools(object):
         return self._account_information
 
     def available_api_calls(self, force_refresh=False, **kwargs):
+        '''
+        Returns a list of endpoints available to the authenticated API user.
+
+        :param force_refresh: A boolean controlling whether or not to refresh the cached info
+        :type force_refresh: bool
+        :param `**kwargs`: Additional arguments to pass to the underlying domaintools module
+
+        :Return Value:
+
+        A list of strings containing the API endpoint names.
+
+        For example:
+
+        [
+            'domain_profile', 
+            'whois', 
+            'whois_history', 
+            'reverse_ip', 
+            ...
+        ]
+        '''
 
         if self._available_api_calls and not force_refresh:
             return self._available_api_calls
@@ -118,6 +198,51 @@ class DomainTools(object):
         return self._available_api_calls
 
     def whois(self, query=None, **kwargs):
+        '''
+        Return basic WHOIS info for a given domain or IP address.
+
+        :param query: A domain or IP address
+        :param type: string
+        :param `**kwargs`: Additional arguments to pass to the underlying domaintools module
+
+        :Return Value:
+        A dict containing basic WHOIS information.
+
+        For example:
+
+        {
+            'registrant': 'Google LLC', 
+            'registration': {
+                'created': '1997-09-15', 
+                'expires': '2028-09-14', 
+                'updated': '2019-09-09', 
+                'registrar': 'MarkMonitor Inc.', 
+                'statuses': [
+                    'clientDeleteProhibited', 
+                    'clientTransferProhibited', 
+                    'clientUpdateProhibited', 
+                    'serverDeleteProhibited', 
+                    'serverTransferProhibited', 
+                    'serverUpdateProhibited'
+                ]
+            }, 
+            'name_servers': [
+                'NS1.GOOGLE.COM', 
+                'NS2.GOOGLE.COM', 
+                'NS3.GOOGLE.COM', 
+                'NS4.GOOGLE.COM'
+            ], 
+            'whois': {
+                'date': '2020-07-12', 
+                'record': 'Domain Name: google.com\nRegistry Domain ID: 2138514_DOMAIN_COM-VRSN\n...'
+            }, 
+            'record_source': 'google.com'
+        }
+
+        :Exceptions:
+        Will raise ValueError if no query is supplied, or if the query is not a string.
+
+        '''
 
         if not query:
             raise ValueError("You must supply either a domain or an IP address.")
@@ -129,6 +254,73 @@ class DomainTools(object):
         return whois_info
 
     def parsed_whois(self, query=None, flatten=False, **kwargs):
+
+        '''
+        Return extended WHOIS info for a given domain or IP address.
+
+        :param query: A domain or IP address
+        :param type: string
+        :param flatten: A boolean controlling whether to attempt to normalize the nested dicts into a single flat dict (DEFAULT False)
+        :type flatten: bool 
+        :param `**kwargs`: Additional arguments to pass to the underlying domaintools module
+
+        :Return Value:
+        A dict containing basic and extended WHOIS information.
+
+        For example:
+
+        {
+            ...
+            'parsed_whois': {
+                'domain': 'google.com', 
+                'created_date': '1997-09-15T00:00:00-07:00', 
+                'updated_date': '2019-09-09T08:39:04-07:00', 
+                'expired_date': '2028-09-13T00:00:00-07:00', 
+                'statuses': [
+                    'clientDeleteProhibited', 
+                    'clientTransferProhibited', 
+                    'clientUpdateProhibited', 
+                    'serverDeleteProhibited', 
+                    'serverTransferProhibited', 
+                    'serverUpdateProhibited'
+                ], 
+                'name_servers': [
+                    'ns1.google.com', 
+                    'ns2.google.com', 
+                    'ns3.google.com', 
+                    'ns4.google.com'
+                ], 
+                'registrar': {
+                    'name': 'MarkMonitor, Inc. MarkMonitor Inc.', 
+                    'abuse_contact_phone': '12083895770', 
+                    'abuse_contact_email': 'abusecomplaints@markmonitor.com', 
+                    'iana_id': '292', 
+                    'url': 'http://www.markmonitor.com', 
+                    'whois_server': 'whois.markmonitor.com'
+                }, 
+                'contacts': {
+                    'registrant': {
+                        'name': '', 
+                        'org': 'Google LLC', 
+                        'street': [], 
+                        'city': '', 
+                        'state': 'CA', 
+                        'postal': '', 
+                        'country': 'us', 
+                        'phone': '', 
+                        'fax': '', 
+                        'email': 'REDACTED FOR PRIVACY (DT)'
+                    }
+                    ...
+                }
+            }
+            ...
+        }
+
+        :Exceptions:
+        Will raise ValueError if no query is supplied, or if the query is not a string.
+
+        '''
 
         if not query:
             raise ValueError(
@@ -146,6 +338,38 @@ class DomainTools(object):
         return whois_info
 
     def brand_monitor(self, query=None, **kwargs):
+        '''
+        Given a query string containing one or more search terms (separated by '|'),
+        return a list of any newly-active or pending domain registrationations 
+        containing ALL of the terms.
+
+        :param query: A string containing one or more search terms (separated by '|')
+        :type query: string
+        :param `**kwargs`: Additional arguments to pass to the underlying domaintools module
+
+        :Return Value:
+
+        A list of dicts, with each dict containing a result.
+
+        For example:
+
+        [
+            {
+                'domain': '54google.com', 
+                'status': 'new'
+            }, 
+            {
+                'domain': 'aboutmicrosoftandgoogleapps.com',
+                 'status': 'on-hold'
+            },
+            ...
+        ]
+
+        :Exceptions:
+
+        Will raise ValueError if no query is supplied or if the query is not a string.
+        '''
+
         if not query:
             raise ValueError("You must specify a query pattern.")
         elif isinstance(query, list):
@@ -156,6 +380,72 @@ class DomainTools(object):
         return list(self._handle.brand_monitor(query, **kwargs))
 
     def domain_profile(self, query=None, flatten=False, **kwargs):
+        '''
+        Look up basic information about a domain, including DNS, WHOIS, history and
+        web site info along with pointers to more detailed info.
+
+        :param query: The domain to look up
+        :type query: string
+        :param flatten: A boolean controlling whether to attempt to normalize the nested dicts into a single flat dict (DEFAULT False)
+        :type flatten: bool 
+        :param `**kwargs`: Additional arguments to pass to the underlying domaintools module
+
+        :Return Value:
+
+        A dict containing the various pieces of info.  
+
+        For example:
+
+        {
+            'registrant': {
+                'name': 'Google LLC', 
+                'domains': 18696, 
+                'product_url': 'https://reversewhois.domaintools.com/?all[]=Google+LLC&none[]='
+            }, 
+            'server': {
+                'ip_address': '172.217.14.196', 
+                'other_domains': 151, 
+                'product_url': 'https://reverseip.domaintools.com/search/?q=google.com'
+            }, 
+            'registration': {
+                'created': '1997-09-15', 
+                'expires': '2028-09-14', 
+                'updated': '2019-09-09', 
+                'registrar': 'MarkMonitor Inc.', 
+                'statuses': [
+                    'clientDeleteProhibited', 
+                    'clientTransferProhibited', 
+                    'clientUpdateProhibited', 
+                    'serverDeleteProhibited', 
+                    'serverTransferProhibited', 
+                    'serverUpdateProhibited'
+                ]
+            }, 
+            'name_servers': [
+                {
+                    'server': 'NS1.GOOGLE.COM', 
+                    'product_url': 'https://reversens.domaintools.com/search/?q=NS1.GOOGLE.COM'
+                }, 
+                {
+                    'server': 'NS2.GOOGLE.COM', 
+                    'product_url': 'https://reversens.domaintools.com/search/?q=NS2.GOOGLE.COM'
+                }, 
+                {
+                    'server': 'NS3.GOOGLE.COM', 
+                    'product_url': 'https://reversens.domaintools.com/search/?q=NS3.GOOGLE.COM'
+                }, 
+                {
+                    'server': 'NS4.GOOGLE.COM', 
+                    'product_url': 'https://reversens.domaintools.com/search/?q=NS4.GOOGLE.COM'
+                }
+            ], 
+            ...
+        }
+
+        :Exceptions:
+
+        Raises ValueError if no query is supplied or if it is not a string.
+        '''
         if not query:
             raise ValueError("You must specify a query domain.")
         elif not isinstance(query, str):
@@ -174,6 +464,36 @@ class DomainTools(object):
         return profile
 
     def domain_reputation(self, domain=None, reasons=False, **kwargs):
+        '''
+        Return a risk score based on the reputation of the given domain, 
+        with an optional list of reasons contributing to the score.
+
+        :param domain: The domain for which to retrieve the score
+        :type domain: string
+        :param reasons: Determines whether or not to include a list of reasons for the score (DEFAULT False)
+        :type reasons: bool
+        :param `**kwargs`: Additional arguments to pass to the underlying domaintools module
+
+        :Return Value: 
+
+        A Dict containing the requested information.  If the domain cannot be found, return
+        an empty dict.
+
+        For example:
+
+        {
+            'domain': 'domaintools.xyz', 
+            'risk_score': 18.69, 
+            'reasons': [
+                'registrant'
+            ]
+        }
+
+        :Exceptions:
+
+        Raises ValueError if no domain is provided, or if the domain is not a string.
+
+        '''
         if not domain:
             raise ValueError("You must specify a query domain.")
         elif not isinstance(domain, str):
@@ -191,6 +511,33 @@ class DomainTools(object):
         return reputation
 
     def risk(self, domain=None,  **kwargs):
+        '''
+        Return risk scores for a domain with respect to individual risk factors.
+
+        :param domain: The domain for which to retrieve the score
+        :type domain: string
+        :param `**kwargs`: Additional arguments to pass to the underlying domaintools module
+
+        :Return Value: 
+
+        A Dict containing the requested information.  If the domain cannot be found, return
+        an empty dict.
+
+        For example:
+
+        {
+            'proximity': 18, 
+            'threat_profile': 36, 
+            'threat_profile_phishing': 36, 
+            'threat_profile_malware': 17, 
+            'threat_profile_spam': 2
+        }
+
+        :Exceptions:
+
+        Raises ValueError if no domain is provided, or if the domain is not a string.
+
+        '''
         if not domain:
             raise ValueError("You must specify a query domain.")
         elif not isinstance(domain, str):
@@ -208,6 +555,32 @@ class DomainTools(object):
         return risk
     
     def enrich(self, df=None, column=None, prefix='dt_whois.', progress_bar=False, fields=None):
+        '''
+        Enrich a pandas DataFrame object with information from DomainTools.  Note that the 
+        original DataFrame is not modified, so you must assign the return value to a variable
+        if you want to keep it.  e.g. `df = dt.enrich(df, column='domains')`.
+
+        :param df: The DataFrame to enrich
+        :type df: pandas.DataFrame
+        :param column: The name of the column containin domains and/or IPs to enrich (as strings)
+        :type column: string
+        :param prefix: Naming prefix for the newly-added columns (DEFAULT 'dt_whois.')
+        :type prefix: string
+        :param progress_bar: If True, attempt to show enrichment progress (DEFAULT False)
+        :type progress_bar: bool
+        :param fields: A list of specific enrichment field names to add (DEFAULT add all fields)
+        :type fields: list of strings
+
+        :Return Value:
+
+        A pandas DataFrame object containing all of the original information plus many 
+        additional enrichment columns.
+
+        :Exceptions:
+        Raises ValueError if the required options are not present or are of the wrong type.
+
+        '''
+
         if df is None:
             raise ValueError("You must supply a pandas DataFrame in the 'df' parameter.")
         elif not isinstance(df, pd.core.frame.DataFrame):
