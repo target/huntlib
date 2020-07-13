@@ -4,15 +4,19 @@ A Python library to help with some common threat hunting data analysis operation
 [![Target’s CFC-Open-Source Slack](https://cfc-slack-inv.herokuapp.com/badge.svg?colorA=155799&colorB=159953)](https://cfc-slack-inv.herokuapp.com/)
 
 ## What's Here?
-The `huntlib` module provides two major object classes as well as a few convenience functions.  
+The `huntlib` module provides three major object classes as well as a few convenience functions.  
 
 * **ElasticDF**: Search Elastic and return results as a Pandas DataFrame
 * **SplunkDF**: Search Splunk and return results as a Pandas DataFrame
+* **DomainTools**: Convenience functions for accessing the DomainTools API, primarily focused around data enrichment (requires a DomainTools API subscription)
 * **data.read_json()**: Read one or more JSON files and return a single Pandas DataFrame
 * **data.read_csv()**: Read one or more CSV files and return a single Pandas DataFrame
 * **entropy()** / **entropy_per_byte()**: Calculate Shannon entropy
 * **promptCreds()**: Prompt for login credentials in the terminal or from within a Jupyter notebook.
 * **edit_distance()**: Calculate how "different" two strings are from each other
+
+## Library-Wide Configuration
+Beginning with `v0.5.0`, `huntlib` now provides a library-wide configuration file, `~/.huntlibrc` allowing you to set certain runtime defaults.  Consult the file `huntlibrc-sample` in this repo for more information.
 
 ## huntlib.elastic.ElasticDF
 The `ElasticDF()` class searches Elastic and returns results as a Pandas DataFrame.  This makes it easier to work with the search results using standard data analysis techniques.
@@ -219,6 +223,86 @@ df = s.search_df(
 ```
 
 *NOTE: You may have to experiment to find the optimal number of parallel processes for your specific environment. Maxing out the number of workers doesn't always give the best performance.*
+
+## huntlib.domaintools.DomainTools
+The `DomainTools` class allows you to easily perform some common types of calls
+to the DomainTools API.  It uses their official `domaintools_api` Python module
+to do most of the work but is not a complete replacement for that module. In
+particular, this class concentrates on a few calls that are most relevant for
+data analytic style threat hunting (risk & reputation scores, WHOIS info, etc).
+
+The `DomainTools` class can make use of the global config file `~/.huntlibrc` to store the API username and secret key, if desired.  See the `huntlibrc-sample` file for more info.
+
+### Example Usage
+
+Import the `DomainTools` object:
+
+    from huntlib.domaintools import DomainTools
+
+Instantiate a new `DomainTools` object:
+
+    dt = DomainTools(
+        api_username="myuser,
+        api_key="mysecretkey
+    )
+
+Instatiate a new `DomainTools` object using default creds stored in `~/.huntlibrc`:
+
+    dt = DomainTools()
+
+Look up API call limits and usage info for the authenticated user:
+
+    dt.account_information()
+
+Return the list of API calls to which the authenticated user has access:
+
+    dt.available_api_calls()
+
+Return basic WHOIS info for a domain or IP address:
+
+    dt.whois('google.com')
+    dt.whois('8.8.8.8')
+
+Return WHOIS info with additional fields parsed from the text part of the record:
+
+    dt.parsed_whois('google.com')
+    dt.parsed_whois('8.8.8.8')
+
+Find newly-activated or pending domain registrations matching all the supplied search terms:
+
+    dt.brand_monitor('myterm')
+    dt.brand_monitor('myterm1|myterm2|myterm3') # terms are ANDed together
+
+Look up basic info about a domain's DNS, WHOIS, hosting and web site in one query.
+
+    dt.domain_profile('google.com')
+
+Return a list of risk scores for a domain, according to different risk factors:
+
+    dt.risk('google.com')
+
+Return a single consolidated risk score for a domain:
+
+    dt.domain_reputation('google.com')
+
+Enrich a pandas DataFrame containing a mixture of domains and/or IP address in a column called 'iocs':
+
+    df = dt.enrich(df, column='iocs')
+
+Enrichment tends to add a large number of columns, which you may not need. Use the `fields` parameter if you know exactly what you want:
+
+    df = dt.enrich(
+        df, 
+        column='iocs', 
+        fields=[
+            'dt_whois.registration.created',
+            'dt_reputation.risk_score'
+        ]
+    )
+
+Enrichment may take quite some time with a large dataset. If you're antsy, try turning on the progress bars:
+
+    df = dt.enrich(df, column='iocs', progress_bar=True)
 
 ## Data Module
 
