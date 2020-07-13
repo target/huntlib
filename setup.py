@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='huntlib',
-      version='0.5.0a1',
+      version='0.5.0a2',
       description='A Python library to help with some common threat hunting data analysis operations',
       long_description=long_description,
       long_description_content_type="text/markdown",
