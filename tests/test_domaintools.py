@@ -13,6 +13,7 @@ import numpy as np
 class TestDomainTools(TestCase):
 
     _handle = None
+    _nonexistent_domain = "ladfownlasdfabwhxpaowanlsuwjn.com"
 
     @classmethod
     def setUpClass(self):
@@ -79,6 +80,15 @@ class TestDomainTools(TestCase):
             "The registrant information does not seem to be correct."
         )
 
+        # Test against a domain that doesn't exist
+        whois = self._handle.whois(self._nonexistent_domain)
+
+        self.assertDictEqual(
+            whois,
+            {},
+            "The WHOIS for a non-existent domain was not empty."
+        )
+
     def test_whois_ipv4(self):
 
         whois = self._handle.whois('172.217.164.164')
@@ -141,6 +151,15 @@ class TestDomainTools(TestCase):
             "The registration create information does not seem to be correct."
         )
 
+        # Test against a domain that doesn't exist
+        whois = self._handle.whois(self._nonexistent_domain)
+
+        self.assertDictEqual(
+            whois,
+            {},
+            "The parsed WHOIS for a non-existent domain was not empty."
+        )
+
     def test_parsed_whois_ipv4(self):
 
         whois = self._handle.parsed_whois('8.8.8.8')
@@ -153,7 +172,7 @@ class TestDomainTools(TestCase):
 
     def test_enrich(self):
 
-        df = pd.DataFrame(['google.com', 'microsoft.com', '8.8.8.8', 'wstwc.cn'], columns=["domain"])
+        df = pd.DataFrame(['google.com', 'microsoft.com', '8.8.8.8', 'wstwc.cn', self._nonexistent_domain], columns=["domain"])
 
         enriched_df = self._handle.enrich(df, column='domain')
 
@@ -224,6 +243,16 @@ class TestDomainTools(TestCase):
             "Domain reputation lookup on an IP failed to return an empty dict."
         )
 
+        # Test against a domain that doesn't exist
+        risk = self._handle.domain_reputation(self._nonexistent_domain)
+
+        self.assertDictEqual(
+            risk,
+            {},
+            "Domain reputation result for a non-existent domain was not empty."
+        )
+
+
     def test_risk(self):
         risk = self._handle.risk('wstwc.cn')
 
@@ -237,4 +266,13 @@ class TestDomainTools(TestCase):
             "proximity",
             risk,
             "The returned risk data did not contain a 'proximity' risk value."
+        )
+
+        # Test against a domain that doesn't exist
+        risk = self._handle.risk(self._nonexistent_domain)
+
+        self.assertDictEqual(
+            risk,
+            dict(),
+            "The returned risk data for a non-existent domain was not empty."
         )
