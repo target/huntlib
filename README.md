@@ -285,9 +285,17 @@ Return a single consolidated risk score for a domain:
 
     dt.domain_reputation('google.com')
 
-Enrich a pandas DataFrame containing a mixture of domains and/or IP address in a column called 'iocs':
+See what DomainTools' IRIS database has to say about a certain domain. This typically provides quick info from a variety of DomainTools sources:
+
+    dt.iris_enrich('google.com')
+
+Enrich a pandas DataFrame containing a mixture of domains and/or IP address in a column called 'iocs'.  It calls `DomainTools.iris_enrich()` to gather the data, and tries to be efficient by handling duplicate values and by sending multiple queries in the same batch:
 
     df = dt.enrich(df, column='iocs')
+
+The default is to send batches of 100 domains at a time, but you can decrease this number if necessary (usually because the query string becomes so long the DomainTools API server rejects it):
+
+    df = dt.enrich(df, column='iocs', batch_size=75)
 
 Enrichment tends to add a large number of columns, which you may not need. Use the `fields` parameter if you know exactly what you want:
 
