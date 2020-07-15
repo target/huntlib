@@ -596,7 +596,7 @@ class DomainTools(object):
 
         if flatten:
             # Normalize the nested dictionary keys into a single level.
-            enrich = pd.json_normalize(enrich).iloc[0].to_dict()
+            enrich = pd.json_normalize(enrich).to_dict()
 
         return enrich
 
@@ -762,15 +762,21 @@ class DomainTools(object):
             raise ValueError(
                 "The 'fields' parameter must be a list of strings.")
 
+        # Attempt some basic deduplication to save API calls
+        unique_domains = pd.Series(
+            df[column].unique(),
+            dtype='object'
+        )
+
         if progress_bar:
             tqdm.pandas(desc='Enriching')
 
         enrichment_df = pd.DataFrame()
 
+        with tqdm(desc="Enriching", total=unique_domains.size, disable=not progress_bar) as pbar:
 
-        with tqdm(desc="Enriching", total=df[column].size, disable=not progress_bar) as pbar:
+            for batch in [unique_domains[i:i+batch_size] for i in range(0, unique_domains.size, batch_size)]:
 
-            for batch in [df[column][i:i+batch_size] for i in range(0, df[column].size, batch_size)]:
                 res = self.iris_enrich(
                     batch,
                     flatten=True
