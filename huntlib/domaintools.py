@@ -14,6 +14,8 @@ import os.path
 
 from functools import reduce
 
+from .decorators import retry
+
 __all__ = ['DomainTools']
 
 class DomainTools(object):
@@ -74,7 +76,7 @@ class DomainTools(object):
         self._account_information = self.account_information(force_refresh=True)
         self._available_api_calls = self.available_api_calls(force_refresh=True)
 
-
+    @retry()
     def authenticate(self, api_username="", api_key="", **kwargs):
         """
         Authenticate to the DomainTools API. Calling this function directly is OK,
@@ -110,7 +112,7 @@ class DomainTools(object):
             **kwargs
         )
 
-
+    @retry()
     def account_information(self, force_refresh=False, **kwargs):
         '''
         Return a dict containing information about limits and usage of the various
@@ -164,6 +166,7 @@ class DomainTools(object):
 
         return self._account_information
 
+    @retry()
     def available_api_calls(self, force_refresh=False, **kwargs):
         '''
         Returns a list of endpoints available to the authenticated API user.
@@ -197,6 +200,7 @@ class DomainTools(object):
 
         return self._available_api_calls
 
+    @retry()
     def whois(self, query=None, **kwargs):
         '''
         Return basic WHOIS info for a given domain or IP address.
@@ -260,6 +264,7 @@ class DomainTools(object):
 
         return whois_info
 
+    @retry()
     def parsed_whois(self, query=None, flatten=False, **kwargs):
 
         '''
@@ -352,6 +357,7 @@ class DomainTools(object):
 
         return whois_info
 
+    @retry()
     def brand_monitor(self, query=None, **kwargs):
         '''
         Given a query string containing one or more search terms (separated by '|'),
@@ -394,6 +400,7 @@ class DomainTools(object):
 
         return list(self._handle.brand_monitor(query, **kwargs))
 
+    @retry()
     def domain_profile(self, query=None, flatten=False, **kwargs):
         '''
         Look up basic information about a domain, including DNS, WHOIS, history and
@@ -478,6 +485,7 @@ class DomainTools(object):
 
         return profile
 
+    @retry()
     def domain_reputation(self, domain=None, reasons=False, **kwargs):
         '''
         Return a risk score based on the reputation of the given domain, 
@@ -525,6 +533,7 @@ class DomainTools(object):
 
         return reputation
 
+    @retry()
     def risk(self, domain=None,  **kwargs):
         '''
         Return risk scores for a domain with respect to individual risk factors.
@@ -569,7 +578,29 @@ class DomainTools(object):
 
         return risk
     
-    def enrich(self, df=None, column=None, prefix='dt_whois.', progress_bar=False, fields=None):
+    @retry() 
+    def iris_enrich(self, query=None, flatten=False, **kwargs):
+        if query is None:
+            raise ValueError("You must specify a domain or list of domains to query.")
+
+        if isinstance(query, list) or isinstance(query, pd.core.series.Series):
+            # Convert a list of strings to a single comma-separated string
+            query = ','.join(query)
+        elif not isinstance(query, str):
+            raise ValueError("The query must be either a string or a list of strings.")
+        
+        try:
+            enrich = list(self._handle.iris_enrich(query, **kwargs))
+        except (BadRequestException, NotFoundException):
+            return dict()
+
+        if flatten:
+            # Normalize the nested dictionary keys into a single level.
+            enrich = pd.json_normalize(enrich).iloc[0].to_dict()
+
+        return enrich
+
+    def enrich(self, df=None, column=None, prefix='dt_enrich.', progress_bar=False, fields=None):
         '''
         Enrich a pandas DataFrame object with information from DomainTools.  Note that the 
         original DataFrame is not modified, so you must assign the return value to a variable
@@ -682,3 +713,103 @@ class DomainTools(object):
 
         return df
 
+    def fast_enrich(self, df=None, column=None, prefix='dt_enrich.', progress_bar=False, fields=None, batch_size=100):
+        '''
+        Enrich a pandas DataFrame object with information from DomainTools.  Note that the 
+        original DataFrame is not modified, so you must assign the return value to a variable
+        if you want to keep it.  e.g. `df = dt.enrich(df, column='domains')`.
+
+        :param df: The DataFrame to enrich
+        :type df: pandas.DataFrame
+        :param column: The name of the column containin domains and/or IPs to enrich (as strings)
+        :type column: string
+        :param prefix: Naming prefix for the newly-added columns (DEFAULT 'dt_whois.')
+        :type prefix: string
+        :param progress_bar: If True, attempt to show enrichment progress (DEFAULT False)
+        :type progress_bar: bool
+        :param fields: A list of specific enrichment field names to add (DEFAULT add all fields)
+        :type fields: list of strings
+
+        :Return Value:
+
+        A pandas DataFrame object containing all of the original information plus many 
+        additional enrichment columns.
+
+        :Exceptions:
+        Raises ValueError if the required options are not present or are of the wrong type.
+
+        '''
+
+        if df is None:
+            raise ValueError(
+                "You must supply a pandas DataFrame in the 'df' parameter.")
+        elif not isinstance(df, pd.core.frame.DataFrame):
+            raise ValueError(
+                "The argument for the 'df' parameter must be a pandas DataFrame.")
+
+        if not column:
+            raise ValueError("You must supply a column name to enrich.")
+        elif not isinstance(column, str):
+            raise ValueError("The column name must be a 'str'.")
+        elif not column in df.columns:
+            raise ValueError(
+                f"The column '{column}' does not exist in the frame.")
+
+        if prefix is None or not isinstance(prefix, str):
+            raise ValueError("The column name prefix must be a 'str'.")
+
+        if fields is not None and not isinstance(fields, list):
+            raise ValueError(
+                "The 'fields' parameter must be a list of strings.")
+
+        if progress_bar:
+            tqdm.pandas(desc='Enriching')
+
+        enrichment_df = pd.DataFrame()
+
+
+        with tqdm(desc="Enriching", total=df[column].size, disable=not progress_bar) as pbar:
+
+            for batch in [df[column][i:i+batch_size] for i in range(0, df[column].size, batch_size)]:
+                res = self.iris_enrich(
+                    batch,
+                    flatten=True
+                )
+
+                # We have to do this the hard way, instead of just DataFrame(res)
+                # because some of the items in res contain lists of unequal length,
+                # which causes pandas to throw an exception.
+                results = pd.DataFrame(
+                    dict(
+                        [(k, pd.Series(v, dtype='object')) for k,v in res.items()]
+                    )
+                )
+                
+                enrichment_df = enrichment_df.append(
+                    results,
+                    ignore_index=True
+                )
+            
+                pbar.update(batch.size)
+
+        enrichment_df = enrichment_df.add_prefix(prefix)
+
+        # If we asked for only certain fields, filter for those
+        if fields:
+            if not f'{prefix}domain' in fields:
+                # Make sure this is in the final fields list no matter what,
+                # because we rely on it as a merge column below
+                fields.append(f'{prefix}domain')
+            enrichment_df = enrichment_df[fields]
+
+        df = pd.merge(
+            df,
+            enrichment_df,
+            how='left',
+            left_on=column,
+            right_on=f'{prefix}domain'
+        )
+
+        df = df.drop(f'{prefix}domain', axis='columns')
+
+        return df
