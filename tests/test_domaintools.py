@@ -178,14 +178,14 @@ class TestDomainTools(TestCase):
 
         self.assertEqual(
             enriched_df.shape[1],
-            87,
+            69,
             "Enriched DataFrame does not have the correct number of columns."
         )
 
         self.assertIn(
-            'dt_whois.parsed_whois.contacts.registrant.org',
+            'dt_enrich.active',
             enriched_df.columns,
-            "Could not find the 'dt_whois.parsed_whois.contacts.registrant.org' column in the enriched frame."
+            "Could not find the 'dt_enrich.active' column in the enriched frame."
         )
 
     def test_brand_monitor(self):

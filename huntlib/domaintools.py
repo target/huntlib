@@ -600,7 +600,7 @@ class DomainTools(object):
 
         return enrich
 
-    def enrich(self, df=None, column=None, prefix='dt_enrich.', progress_bar=False, fields=None):
+    def enrich(self, df=None, column=None, prefix='dt_enrich.', progress_bar=False, fields=None, batch_size=100):
         '''
         Enrich a pandas DataFrame object with information from DomainTools.  Note that the 
         original DataFrame is not modified, so you must assign the return value to a variable
@@ -616,119 +616,8 @@ class DomainTools(object):
         :type progress_bar: bool
         :param fields: A list of specific enrichment field names to add (DEFAULT add all fields)
         :type fields: list of strings
-
-        :Return Value:
-
-        A pandas DataFrame object containing all of the original information plus many 
-        additional enrichment columns.
-
-        :Exceptions:
-        Raises ValueError if the required options are not present or are of the wrong type.
-
-        '''
-
-        if df is None:
-            raise ValueError("You must supply a pandas DataFrame in the 'df' parameter.")
-        elif not isinstance(df, pd.core.frame.DataFrame):
-            raise ValueError("The argument for the 'df' parameter must be a pandas DataFrame.")
-
-        if not column:
-            raise ValueError("You must supply a column name to enrich.")
-        elif not isinstance(column, str):
-            raise ValueError("The column name must be a 'str'.")
-        elif not column in df.columns:
-            raise ValueError(f"The column '{column}' does not exist in the frame.")
-
-        if prefix is None or not isinstance(prefix, str):
-            raise ValueError("The column name prefix must be a 'str'.")
-
-        if fields is not None and not isinstance(fields, list):
-            raise ValueError("The 'fields' parameter must be a list of strings.")
-
-        # WHOIS Enrichment
-        if progress_bar:
-            tqdm.pandas(desc='Enriching WHOIS')
-            apply_func = df[column].progress_apply
-        else:
-            apply_func = df[column].apply
-
-        whois_df = apply_func(
-            lambda d: pd.Series(self.parsed_whois(d, flatten=True), dtype=object)
-        )
-
-        whois_df = whois_df.add_prefix('dt_whois.')
-
-        # Domain reputation enrichment
-        if progress_bar:
-            tqdm.pandas(desc='Enriching Reputation')
-            apply_func = df[column].progress_apply
-        else:
-            apply_func = df[column].apply
-
-        reputation_df = apply_func(
-            lambda d: pd.Series(self.domain_reputation(d), dtype=object)
-        )
-
-        reputation_df = reputation_df.add_prefix('dt_reputation.')
-
-        # Domain risk score enrichment
-        if progress_bar:
-            tqdm.pandas(desc='Enriching Risk Scores')
-            apply_func = df[column].progress_apply
-        else:
-            apply_func = df[column].apply
-
-        risk_score_df = apply_func(
-            lambda d: pd.Series(self.risk(d), dtype=object)
-        )
-
-        risk_score_df = risk_score_df.add_prefix('dt_risk.')
-
-        # Combine all the enrichment data into a single DataFrame
-        data_dfs = [
-            whois_df, 
-            reputation_df, 
-            risk_score_df
-        ]
-
-        enrichment_df = reduce(
-            lambda left, right: pd.merge(
-                left, 
-                right, 
-                left_index=True, 
-                right_index=True
-            ), 
-            data_dfs
-        )
-
-        # If we asked for only certain fields, filter for those
-        if fields:
-            enrichment_df = enrichment_df[fields]
-
-        df = df.merge(
-            enrichment_df,       
-            left_index=True, 
-            right_index=True
-        )
-
-        return df
-
-    def fast_enrich(self, df=None, column=None, prefix='dt_enrich.', progress_bar=False, fields=None, batch_size=100):
-        '''
-        Enrich a pandas DataFrame object with information from DomainTools.  Note that the 
-        original DataFrame is not modified, so you must assign the return value to a variable
-        if you want to keep it.  e.g. `df = dt.enrich(df, column='domains')`.
-
-        :param df: The DataFrame to enrich
-        :type df: pandas.DataFrame
-        :param column: The name of the column containin domains and/or IPs to enrich (as strings)
-        :type column: string
-        :param prefix: Naming prefix for the newly-added columns (DEFAULT 'dt_whois.')
-        :type prefix: string
-        :param progress_bar: If True, attempt to show enrichment progress (DEFAULT False)
-        :type progress_bar: bool
-        :param fields: A list of specific enrichment field names to add (DEFAULT add all fields)
-        :type fields: list of strings
+        :param batch_size: The number of domains/IPs to enrich in one "batch" (DEFAULT 100)
+        :type batch_size: integer
 
         :Return Value:
 
