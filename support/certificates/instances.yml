@@ -1,0 +1,9 @@
+instances:
+  - name: elastic_test 
+    dns: 
+      - elastic_test 
+      - localhost
+      - host.docker.internal
+    ip:
+      - 127.0.0.1
+

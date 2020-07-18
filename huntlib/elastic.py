@@ -1,9 +1,8 @@
-from huntlib.exceptions import *
+from huntlib.exceptions import AuthenticationErrorSearchException, InvalidRequestSearchException, UnknownSearchException
 from builtins import object
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
 import elasticsearch.exceptions
-from pandas.io.json import json_normalize
 import pandas as pd
 from datetime import datetime, timedelta
 
@@ -179,7 +178,7 @@ class ElasticDF(object):
             results.append(hit)
 
         if normalize:
-            df = json_normalize(results)
+            df = pd.json_normalize(results)
         else:
             df = pd.DataFrame(results)
 

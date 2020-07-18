@@ -6,9 +6,10 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='huntlib',
-      version='0.3.0',
+      version='0.4.5',
       description='A Python library to help with some common threat hunting data analysis operations',
       long_description=long_description,
+      long_description_content_type="text/markdown",
       url='https://github.com/target/huntlib',
       author='David J. Bianco',
       author_email='david.bianco@target.com',
@@ -21,14 +22,13 @@ setup(name='huntlib',
         'elasticsearch-dsl',
         'pandas',
         'numpy',
-        'jellyfish<0.7'
+        'jellyfish>=0.8.2'
       ],
       zip_safe=True,
       classifiers=[
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: MIT License"
       ]
 )

@@ -8,6 +8,8 @@ The `huntlib` module provides two major object classes as well as a few convenie
 
 * **ElasticDF**: Search Elastic and return results as a Pandas DataFrame
 * **SplunkDF**: Search Splunk and return results as a Pandas DataFrame
+* **data.read_json()**: Read one or more JSON files and return a single Pandas DataFrame
+* **data.read_csv()**: Read one or more CSV files and return a single Pandas DataFrame
 * **entropy()** / **entropy_per_byte()**: Calculate Shannon entropy
 * **promptCreds()**: Prompt for login credentials in the terminal or from within a Jupyter notebook.
 * **edit_distance()**: Calculate how "different" two strings are from each other
@@ -94,6 +96,9 @@ s = SplunkDF(
 )
 ```
 
+`SplunkDF` will raise `AuthenticationErrorSearchException` during initialization
+in the event the server denied the supplied credentials.  
+
 Fetch all search results across all time
 
 ```python
@@ -157,8 +162,103 @@ maximum result size.  If you omit limit altogether, you will get the **true**
 number of search results available without subject to additional limits, though
 your search may take much longer to complete.*
 
-`SplunkDF` will raise `AuthenticationErrorSearchException` during initialization
-in the event the server denied the supplied credentials.  
+Return only specified fields `NewProcessName` and `SubjectUserName`
+
+```python
+df = s.search_df(
+                  spl="search index=win_events EventCode=4688",
+                  fields="NewProcessName,SubjectUserName"
+)
+```
+
+*NOTE: By default, Splunk will only return the fields you reference in the
+search string (i.e. you must explicitly search on "NewProcessName" if you want
+that field in the results. Usually this is not what we want. When fields is not `None`, 
+the query string will be rewritten with "| fields <fields>" at the end (e.g., 
+`search index=win_events EventCode=4688 | fields NewProcessName,SubjectUserName`). This
+works fine for most simple cases, but if you have a more complex SPL query and it breaks, 
+simply set `fields=None` in your function call to avoid this behavior.*
+
+Try to remove Splunk's "internal" fields from search results:
+
+```python
+df = s.search_df(
+    spl="search index=win_events EventCode=4688",
+    internal_fields=False
+)
+``` 
+This will remove such fields as `_time` and `_sourcetype` as well as any other field who's name begins with `_`.  This behavior occurs by default (`internal_fields` defaults to `False`), but you can disable it by using `internal_fields=True`.  
+
+Remove named field(s) from the search results:
+
+```python
+df = s.search_df(
+    spl="search index=win_events EventCode=4688",   internal_fields="_bkt,_cd,_indextime,_raw,_serial,_si,_sourcetype,_subsecond,_time"
+)
+```
+In the event you need more control over which "internal" fields to drop, you can pass a comma-separated list of field names (NOTE: these can be any field, not just Splunk internal fields).
+
+Splunk's Python API can be quite slow, so to speed things up you may elect to spread the result retrieval among multiple cores.  The default is to use one (1) extra core, but you can use the `processes` argument to `search()` or `search_df()` to set this higher if you like.  
+
+```python
+df = s.search_df(
+    spl="search index=win_events EventCode=4688", 
+    processes=4
+)
+```
+
+If you prefer to use all your cores, try something like:
+
+```python
+from multiprocessing import cpu_count
+
+df = s.search_df(
+    spl="search index=win_events EventCode=4688",
+    processes=cpu_count()
+)
+```
+
+*NOTE: You may have to experiment to find the optimal number of parallel processes for your specific environment. Maxing out the number of workers doesn't always give the best performance.*
+
+## Data Module
+
+The `huntlib.data` module contains functions that make it easier to deal with data files.  
+
+### Reading Multiple Data Files
+
+`huntlib` provides two convenience functions to replace the standard Pandas `read_json()` and `read_csv()` functions.  These replacement functions work exaclty the same as their originals, and take all the same arguments.  The only difference is that they are capable of accepting a filename wildcard in addition to the name of a single file.  All files matching the wildcard expression will be read and returned as a single `DataFrame`.
+
+Start by importing the functions from the module:
+
+```python
+from huntlib.data import read_csv, read_json
+```
+
+Here's an example of reading a single JSON file, where each line is a separate JSON document:
+
+```python
+df = read_json("data.json", lines=True)
+```
+
+Similarly, this will read all JSON files in the current directory:
+
+```python
+df = read_json("*.json", lines=True)
+```
+
+The `read_csv` function works the same way:
+
+```python
+df = read_csv("data.csv)
+```
+
+or 
+
+```python
+df = read_csv("*.csv")
+```
+
+Consult the Pandas documentation for information on supported options for `read_csv()` and `read_json()`.
 
 ## Miscellaneous Functions
 
