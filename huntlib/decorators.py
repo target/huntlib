@@ -2,8 +2,7 @@
 
 from functools import wraps
 import time
-
-#import random
+import warnings
 
 def retry(retries=3, delay=1):
     '''
@@ -38,3 +37,20 @@ def retry(retries=3, delay=1):
         return wrapper
 
     return _retry 
+
+def future_warning(msg=None):
+    '''
+    Mark a function as deprecated (warn the user, but then call
+    the function anyway).
+    '''
+
+    def _deprecated(func):
+        @wraps(func)
+
+        def wrapper(*args, **kwargs):
+            warnings.warn(msg, category=FutureWarning, stacklevel=2)
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return _deprecated
