@@ -95,6 +95,20 @@ def edit_distance(str1, str2, method="damerau-levenshtein"):
 
     return distance_function(str1, str2)
 
+def flatten(obj, sep='.'):
+    def _flatten(obj, keypath='', sep='.'):
+        '''
+        Given a dictionary that may contain other dictionaries, flatten
+        all the values into a single level.
+        '''
+        if isinstance(obj, dict):
+            keypath = keypath + sep if keypath else keypath
+            for k in obj:
+                yield from _flatten(obj[k], keypath + str(k), sep=sep)
+        else:
+            yield keypath, obj
+
+    return dict(_flatten(obj=obj, sep=sep))
 
 # First time initialization on import
 
