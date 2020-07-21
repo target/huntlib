@@ -100,6 +100,15 @@ s = SplunkDF(
 )
 ```
 
+If you prefer, you use a Splunk session token in place of a username/password (ask your Splunk administator to create one for you):
+
+````python
+s = SplunkDF(
+    host=splunk_server,
+    token="<your token>"
+)
+````
+
 `SplunkDF` will raise `AuthenticationErrorSearchException` during initialization
 in the event the server denied the supplied credentials.  
 
