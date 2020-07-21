@@ -15,6 +15,7 @@ import os.path
 from functools import reduce
 
 from .decorators import retry
+from .util import flatten as huntlib_util_flatten
 
 __all__ = ['DomainTools']
 
@@ -353,7 +354,7 @@ class DomainTools(object):
         
         if flatten:
             # Normalize the nested dictionary keys into a single level.
-            whois_info = pd.json_normalize(whois_info).iloc[0].to_dict()
+            whois_info = huntlib_util_flatten(whois_info)
 
         return whois_info
 
@@ -481,7 +482,7 @@ class DomainTools(object):
 
         if flatten:
             # Normalize the nested dictionary keys into a single level.
-            profile = pd.json_normalize(profile).iloc[0].to_dict()
+            profile = huntlib_util_flatten(profile)
 
         return profile
 
@@ -590,13 +591,13 @@ class DomainTools(object):
             raise ValueError("The query must be either a string or a list of strings.")
         
         try:
-            enrich = list(self._handle.iris_enrich(query, **kwargs))
+            enrich = list(self._handle.iris_enrich(query, **kwargs))[0]
         except (BadRequestException, NotFoundException):
             return dict()
 
         if flatten:
             # Normalize the nested dictionary keys into a single level.
-            enrich = pd.json_normalize(enrich).to_dict()
+            enrich = huntlib_util_flatten(enrich)
 
         return enrich
 
