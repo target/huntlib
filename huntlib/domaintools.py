@@ -273,7 +273,7 @@ class DomainTools(object):
 
         :param query: A domain or IP address
         :param type: string
-        :param flatten: A boolean controlling whether to attempt to normalize the nested dicts into a single flat dict (DEFAULT False)
+        :param flatten: A boolean controlling whether to attempt to normalize the nested dicts or lists into a single flat dict (DEFAULT False)
         :type flatten: bool 
         :param `**kwargs`: Additional arguments to pass to the underlying domaintools module
 
@@ -409,7 +409,7 @@ class DomainTools(object):
 
         :param query: The domain to look up
         :type query: string
-        :param flatten: A boolean controlling whether to attempt to normalize the nested dicts into a single flat dict (DEFAULT False)
+        :param flatten: A boolean controlling whether to attempt to normalize the nested dicts/lists into a single flat dict (DEFAULT False)
         :type flatten: bool 
         :param `**kwargs`: Additional arguments to pass to the underlying domaintools module
 
@@ -580,7 +580,47 @@ class DomainTools(object):
         return risk
     
     @retry() 
-    def iris_enrich(self, query=None, flatten=False, **kwargs):
+    def iris_enrich(self, query=None, flatten=False, asframe=False, **kwargs):
+        '''
+        Bulk enrichment for lists of domains against the DomainTools IRIS database.
+        This will do basic deduplication (e.g., 'google.com' will only be looked up 
+        once no matter how many times it appears in the input list, but 'google.com',
+        'www.google.com' and 'drive.google.com' are not considered duplicates).  
+
+        :param query: The domain(s) to enrich
+        :type query: list or pandas Series object
+        :param flatten: A boolean controlling whether to attempt to normalize the nested dicts/lists into a single flat dict (DEFAULT False)
+        :type flatten: bool 
+        :param asframe: Return the enriched data as a pandas DataFrame instead of a dict (DEFAULT False)
+        :param `**kwargs`: Additional arguments to pass to the underlying domaintools module
+
+        :Return Value:
+        
+        Returns a dict where each key is an enriched domain and the corresponding
+        value is a dict with the enrichment data for that domain.  For example:
+
+        {
+            'google.com': {
+                'whois_url': 'https://whois.domaintools.com/google.com',
+                'active': True,
+                [...]
+            },
+            'microsoft.com': {
+                'whois_url': 'https://whois.domaintools.com/microsoft.com',
+                'active': True,
+                [...]
+            }
+        }
+
+        If `asframe` is True, the result is returned instead as a pandas DataFrame 
+        object, where the 'domain' column contains the enriched domains, with their
+        enrichment data flattened into columns, like so:
+
+                domain          whois_url                                   active  [...]
+            0   google.com      https://whois.domaintools.com/google.com    True    [...]
+            1   microsoft.com   https://whois.domaintools.com/microsoft.com True    [...]
+        
+        '''
         if query is None:
             raise ValueError("You must specify a domain or list of domains to query.")
 
@@ -591,16 +631,24 @@ class DomainTools(object):
             raise ValueError("The query must be either a string or a list of strings.")
         
         try:
-            enrich = list(self._handle.iris_enrich(query, **kwargs))[0]
+            enrich = list(self._handle.iris_enrich(query, **kwargs))
         except (BadRequestException, NotFoundException):
             return dict()
 
-        if flatten:
-            # Normalize the nested dictionary keys into a single level.
-            enrich = huntlib_util_flatten(enrich)
+        data = dict()
+        for i in enrich:
+            if 'domain' in i:
+                domain = i.pop('domain')
+                if flatten:
+                    data[domain] = huntlib_util_flatten(i)
+                else:
+                    data[domain] = i
 
-        return enrich
-
+        if asframe:
+            return pd.DataFrame(data).transpose().reset_index().rename(columns={'index': 'domain'})
+        else:
+            return data 
+    
     def enrich(self, df=None, column=None, prefix='dt_enrich.', progress_bar=False, fields=None, batch_size=100):
         '''
         Enrich a pandas DataFrame object with information from DomainTools.  Note that the 
@@ -669,7 +717,8 @@ class DomainTools(object):
 
                 res = self.iris_enrich(
                     batch,
-                    flatten=True
+                    flatten=True,
+                    asframe=True
                 )
 
                 # We have to do this the hard way, instead of just DataFrame(res)
