@@ -15,7 +15,7 @@ import os.path
 from functools import reduce
 
 from .decorators import retry
-from .util import flatten as huntlib_util_flatten
+from .data import flatten as huntlib_data_flatten
 
 __all__ = ['DomainTools']
 
@@ -354,7 +354,7 @@ class DomainTools(object):
         
         if flatten:
             # Normalize the nested dictionary keys into a single level.
-            whois_info = huntlib_util_flatten(whois_info)
+            whois_info = huntlib_data_flatten(whois_info)
 
         return whois_info
 
@@ -482,7 +482,7 @@ class DomainTools(object):
 
         if flatten:
             # Normalize the nested dictionary keys into a single level.
-            profile = huntlib_util_flatten(profile)
+            profile = huntlib_data_flatten(profile)
 
         return profile
 
@@ -640,7 +640,7 @@ class DomainTools(object):
             if 'domain' in i:
                 domain = i.pop('domain')
                 if flatten:
-                    data[domain] = huntlib_util_flatten(i)
+                    data[domain] = huntlib_data_flatten(i)
                 else:
                     data[domain] = i
 

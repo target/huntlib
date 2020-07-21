@@ -5,7 +5,7 @@ from glob import glob
 
 import os
 
-__all__ = ['read_json', 'read_csv']
+__all__ = ['read_json', 'read_csv', 'flatten']
 
 def _read_multi(func=None, path_or_buf=None, *args, **kwargs):
     """
@@ -66,3 +66,50 @@ def read_csv(path_or_buf=None, *args, **kwargs):
         *args,
         **kwargs
     )
+
+
+def flatten(obj, sep='.'):
+    '''
+    Given a dictionary or list that may contain other dictionaries
+    or lists, recursively flatten all the values into a single 
+    level and return them as a list.
+
+    :param obj: The possibly-multilevel object to flatten
+    :param type: dict or list object
+    :param sep: The character to use to separate the path names. (DEFAULT '.')
+    :param sep: string
+
+    :Return Value:
+    A dict containing all the entries of member dicts or lists in a single
+    flat keyspace. 
+
+    For example:
+
+    >>> flatten({"key1": "val1", "subkeys": {"subkey1": "subval1"}})
+    {'key1': 'val1', 'subkeys.subkey1': 'subval1'}
+
+    Lists are flattened according to their indices:
+
+    >>> flatten([1, 2, 3])
+    {'0': 1, '1': 2, '2': 3}
+
+    A more complex example:
+
+    >>> huntlib.flatten([dict(a='a', b='b'), dict(a='a1', c='c')])
+    {'0.a': 'a', '0.b': 'b', '1.a': 'a1', '1.c': 'c'}
+
+    '''
+    def _flatten(obj, keypath='', sep='.'):
+
+        if isinstance(obj, dict):
+            keypath = keypath + sep if keypath else keypath
+            for k in obj:
+                yield from _flatten(obj[k], keypath + str(k), sep=sep)
+        elif isinstance(obj, list):
+            keypath = keypath + sep if keypath else keypath
+            for k in range(len(obj)):
+                yield from _flatten(obj[k], keypath + str(k), sep=sep)
+        else:
+            yield keypath, obj
+
+    return dict(_flatten(obj=obj, sep=sep))
