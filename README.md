@@ -11,10 +11,11 @@ The `huntlib` module provides three major object classes as well as a few conven
 * **DomainTools**: Convenience functions for accessing the DomainTools API, primarily focused around data enrichment (requires a DomainTools API subscription)
 * **data.read_json()**: Read one or more JSON files and return a single Pandas DataFrame
 * **data.read_csv()**: Read one or more CSV files and return a single Pandas DataFrame
+* **data.flatten()**: Recursively flatten dicts/lists into a single level dict. Useful for data normalization and creating DataFrames.
 * **util.entropy()** / **util.entropy_per_byte()**: Calculate Shannon entropy
 * **util.promptCreds()**: Prompt for login credentials in the terminal or from within a Jupyter notebook.
 * **util.edit_distance()**: Calculate how "different" two strings are from each other
-* **util.flatten()**: Recursively flatten dicts/lists into a single level dict. Useful for data normalization and creating DataFrames.
+* **util.benfords()**: Determine whether a given collection of numbers obeys Benford's Law
 
 ## Library-Wide Configuration
 Beginning with `v0.5.0`, `huntlib` now provides a library-wide configuration file, `~/.huntlibrc` allowing you to set certain runtime defaults.  Consult the file `huntlibrc-sample` in this repo for more information.
@@ -364,7 +365,7 @@ Consult the Pandas documentation for information on supported options for `read_
 
 ### Normalizing nesting dicts and lists
 
-Many times the data that we deal with is not well formatted for our purposes because it contains complex data structures inside itself and we need it to be more regular (e.g., when converting REST API data in JSON format to a pandas DataFrame).  The `huntlib.util.flatten()` function may be just what you need!
+Many times the data that we deal with is not well formatted for our purposes because it contains complex data structures inside itself and we need it to be more regular (e.g., when converting REST API data in JSON format to a pandas DataFrame).  The `huntlib.data.flatten()` function may be just what you need!
 
 Given a dict or list that may itself contain other dicts or lists, `flatten()` will traverse the object recursively and bring all the data into a single dict with a single level of keys (making it 'flat').
 
@@ -443,4 +444,58 @@ You can specify a different algorithm using the `method` parameter. Valid method
 ```python
 >>> edit_distance('svchost', 'scvhost', method='levenshtein')
 2
+```
+
+### Benford's Law
+Benford's Law, also known as the "first digit law" or the "law of anomalous numbers" states that there is a specific distribution pattern of the first digits of certain groups of numbers.  It is often used to detect cheating or tampering in areas such as tax fraud and vote rigging.  
+
+See https://en.wikipedia.org/wiki/Benford%27s_law for more info on Benford's Law and it's potential applications.
+
+The `benfords()` function returns a 3-tuple of values like: `(chi2, p, counts)`.
+
+* `chi2` is a float in the range 0..1 that describes how well the observed distribution of first digits matched the predictions of Benford's Law.  Lower is better.  
+* `p` is the probability that the computed 'chi2' is significant (i.e., it tells you whether the chi2 value can be trusted).  Its range is also 0..1, but in this case, higher is better.  Generally speaking, if the p-value is >= 0.95 then the chi2 value is considered significant.
+* `counts` is a Pandas series where the indices are the possible first digits 1-9 and the values are the observed distributions of those digits. If the observed distributions didn't match up with Benford's law, the counts may help you identify the anomalous values.
+
+Here's an example of calling the `benfords()` function, with a contrived set of numbers that definitely conform to the expected distribution:
+
+```python
+>>> numbers = [1, 1, 1, 1, 1, 1, 1, 1, 
+               2, 2, 2, 2,
+               3, 3, 3, 
+               4, 4, 
+               5, 5, 
+               6, 6, 
+               7, 7, 
+               8, 
+               9]
+>>> benrods(numbers)
+(0.019868294035033682, 0.9999999995974126, 1    0.32
+2    0.16
+3    0.12
+4    0.08
+5    0.08
+6    0.08
+7    0.08
+8    0.04
+9    0.04
+Name: digits, dtype: float64)
+```
+
+Notice the `chi2` value is quite low (~0.02), meaning these numbers follow Benford's Law quite well.  The `p` value is > 0.999999999 so we can have a high confidence in these results.
+
+Here the input is a set of random numbers, which do not conform to Benford's Law.  Notice the `chi2` value is much higher, but the `p` value is still > 0.9999, indicating that we can trust the fact that it doesn't conform.
+```python
+>>> numbers = np.random.randint(1, 10, 1000)
+>>> benfords(numbers)
+(0.391706824115063, 0.9999475565204166, 1    0.114
+2    0.119
+3    0.118
+4    0.099
+5    0.110
+6    0.116
+7    0.120
+8    0.083
+9    0.121
+Name: digits, dtype: float64)
 ```
