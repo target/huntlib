@@ -178,7 +178,7 @@ class TestDomainTools(TestCase):
 
         self.assertEqual(
             enriched_df.shape[1],
-            144,
+            131,
             "Enriched DataFrame does not have the correct number of columns."
         )
 
