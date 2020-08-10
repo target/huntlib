@@ -1,0 +1,4 @@
+[domaintools]
+# The DomainTools API username and key for authentication
+api_username = MY-USERNAME
+api_key = MY-API-KEY 

@@ -4,15 +4,20 @@ A Python library to help with some common threat hunting data analysis operation
 [![Target’s CFC-Open-Source Slack](https://cfc-slack-inv.herokuapp.com/badge.svg?colorA=155799&colorB=159953)](https://cfc-slack-inv.herokuapp.com/)
 
 ## What's Here?
-The `huntlib` module provides two major object classes as well as a few convenience functions.  
+The `huntlib` module provides three major object classes as well as a few convenience functions.  
 
 * **ElasticDF**: Search Elastic and return results as a Pandas DataFrame
 * **SplunkDF**: Search Splunk and return results as a Pandas DataFrame
+* **DomainTools**: Convenience functions for accessing the DomainTools API, primarily focused around data enrichment (requires a DomainTools API subscription)
 * **data.read_json()**: Read one or more JSON files and return a single Pandas DataFrame
 * **data.read_csv()**: Read one or more CSV files and return a single Pandas DataFrame
-* **entropy()** / **entropy_per_byte()**: Calculate Shannon entropy
-* **promptCreds()**: Prompt for login credentials in the terminal or from within a Jupyter notebook.
-* **edit_distance()**: Calculate how "different" two strings are from each other
+* **util.entropy()** / **util.entropy_per_byte()**: Calculate Shannon entropy
+* **util.promptCreds()**: Prompt for login credentials in the terminal or from within a Jupyter notebook.
+* **util.edit_distance()**: Calculate how "different" two strings are from each other
+* **util.flatten()**: Recursively flatten dicts/lists into a single level dict. Useful for data normalization and creating DataFrames.
+
+## Library-Wide Configuration
+Beginning with `v0.5.0`, `huntlib` now provides a library-wide configuration file, `~/.huntlibrc` allowing you to set certain runtime defaults.  Consult the file `huntlibrc-sample` in this repo for more information.
 
 ## huntlib.elastic.ElasticDF
 The `ElasticDF()` class searches Elastic and returns results as a Pandas DataFrame.  This makes it easier to work with the search results using standard data analysis techniques.
@@ -95,6 +100,15 @@ s = SplunkDF(
               password="mypass"
 )
 ```
+
+If you prefer, you use a Splunk session token in place of a username/password (ask your Splunk administator to create one for you):
+
+````python
+s = SplunkDF(
+    host=splunk_server,
+    token="<your token>"
+)
+````
 
 `SplunkDF` will raise `AuthenticationErrorSearchException` during initialization
 in the event the server denied the supplied credentials.  
@@ -220,13 +234,101 @@ df = s.search_df(
 
 *NOTE: You may have to experiment to find the optimal number of parallel processes for your specific environment. Maxing out the number of workers doesn't always give the best performance.*
 
+## huntlib.domaintools.DomainTools
+The `DomainTools` class allows you to easily perform some common types of calls
+to the DomainTools API.  It uses their official `domaintools_api` Python module
+to do most of the work but is not a complete replacement for that module. In
+particular, this class concentrates on a few calls that are most relevant for
+data analytic style threat hunting (risk & reputation scores, WHOIS info, etc).
+
+The `DomainTools` class can make use of the global config file `~/.huntlibrc` to store the API username and secret key, if desired.  See the `huntlibrc-sample` file for more info.
+
+### Example Usage
+
+Import the `DomainTools` object:
+
+    from huntlib.domaintools import DomainTools
+
+Instantiate a new `DomainTools` object:
+
+    dt = DomainTools(
+        api_username="myuser,
+        api_key="mysecretkey
+    )
+
+Instatiate a new `DomainTools` object using default creds stored in `~/.huntlibrc`:
+
+    dt = DomainTools()
+
+Look up API call limits and usage info for the authenticated user:
+
+    dt.account_information()
+
+Return the list of API calls to which the authenticated user has access:
+
+    dt.available_api_calls()
+
+Return basic WHOIS info for a domain or IP address:
+
+    dt.whois('google.com')
+    dt.whois('8.8.8.8')
+
+Return WHOIS info with additional fields parsed from the text part of the record:
+
+    dt.parsed_whois('google.com')
+    dt.parsed_whois('8.8.8.8')
+
+Find newly-activated or pending domain registrations matching all the supplied search terms:
+
+    dt.brand_monitor('myterm')
+    dt.brand_monitor('myterm1|myterm2|myterm3') # terms are ANDed together
+
+Look up basic info about a domain's DNS, WHOIS, hosting and web site in one query.
+
+    dt.domain_profile('google.com')
+
+Return a list of risk scores for a domain, according to different risk factors:
+
+    dt.risk('google.com')
+
+Return a single consolidated risk score for a domain:
+
+    dt.domain_reputation('google.com')
+
+See what DomainTools' IRIS database has to say about a certain domain. This typically provides quick info from a variety of DomainTools sources:
+
+    dt.iris_enrich('google.com')
+
+Enrich a pandas DataFrame containing a mixture of domains and/or IP address in a column called 'iocs'.  It calls `DomainTools.iris_enrich()` to gather the data, and tries to be efficient by handling duplicate values and by sending multiple queries in the same batch:
+
+    df = dt.enrich(df, column='iocs')
+
+The default is to send batches of 100 domains at a time, but you can decrease this number if necessary (usually because the query string becomes so long the DomainTools API server rejects it):
+
+    df = dt.enrich(df, column='iocs', batch_size=75)
+
+Enrichment tends to add a large number of columns, which you may not need. Use the `fields` parameter if you know exactly what you want:
+
+    df = dt.enrich(
+        df, 
+        column='iocs', 
+        fields=[
+            'dt_whois.registration.created',
+            'dt_reputation.risk_score'
+        ]
+    )
+
+Enrichment may take quite some time with a large dataset. If you're antsy, try turning on the progress bars:
+
+    df = dt.enrich(df, column='iocs', progress_bar=True)
+
 ## Data Module
 
-The `huntlib.data` module contains functions that make it easier to deal with data files.  
+The `huntlib.data` module contains functions that make it easier to deal with data and data files.  
 
 ### Reading Multiple Data Files
 
-`huntlib` provides two convenience functions to replace the standard Pandas `read_json()` and `read_csv()` functions.  These replacement functions work exaclty the same as their originals, and take all the same arguments.  The only difference is that they are capable of accepting a filename wildcard in addition to the name of a single file.  All files matching the wildcard expression will be read and returned as a single `DataFrame`.
+`huntlib.data` provides two convenience functions to replace the standard Pandas `read_json()` and `read_csv()` functions.  These replacement functions work exaclty the same as their originals, and take all the same arguments.  The only difference is that they are capable of accepting a filename wildcard in addition to the name of a single file.  All files matching the wildcard expression will be read and returned as a single `DataFrame`.
 
 Start by importing the functions from the module:
 
@@ -260,11 +362,34 @@ df = read_csv("*.csv")
 
 Consult the Pandas documentation for information on supported options for `read_csv()` and `read_json()`.
 
-## Miscellaneous Functions
+### Normalizing nesting dicts and lists
+
+Many times the data that we deal with is not well formatted for our purposes because it contains complex data structures inside itself and we need it to be more regular (e.g., when converting REST API data in JSON format to a pandas DataFrame).  The `huntlib.util.flatten()` function may be just what you need!
+
+Given a dict or list that may itself contain other dicts or lists, `flatten()` will traverse the object recursively and bring all the data into a single dict with a single level of keys (making it 'flat').
+
+Flattening a dict with nested dicts:
+
+    >>> flatten({"key1": "val1", "subkeys": {"subkey1": "subval1"}})
+    {'key1': 'val1', 'subkeys.subkey1': 'subval1'}
+
+Flatten a list with nested lists.  Notice that the resulting keys are the list indices in string form:
+
+    >>> flatten([1, 2, 3])
+    {'0': 1, '1': 2, '2': 3}
+
+A more complex example:
+
+    >>> flatten([{'a': 'a', 'b': 'b'}, {'a': 'a1', 'c': 'c'}])
+    {'0.a': 'a', '0.b': 'b', '1.a': 'a1', '1.c': 'c'}
+
+## Util Module 
+
+The `huntlib.util` modules contains miscellaneous functions that don't fit anywhere else, but are nevertheless still useful.
 
 ### Entropy
 
-We define two entropy functions, `entropy()` and `entropy_per_byte()`. Both accept a single string as a parameter.  The `entropy()` function calculates the Shannon entropy of the given string, while `entropy_per_byte()` attempts to normalize across strings of various lengths by returning the Shannon entropy divided by the length of the string.  Both return values are `float`.
+`huntlib.util` provides two entropy functions, `entropy()` and `entropy_per_byte()`. Both accept a single string as a parameter.  The `entropy()` function calculates the Shannon entropy of the given string, while `entropy_per_byte()` attempts to normalize across strings of various lengths by returning the Shannon entropy divided by the length of the string.  Both return values are `float`.
 
 ```python
 >>> entropy("The quick brown fox jumped over the lazy dog.")
@@ -277,7 +402,7 @@ The higher the value, the more data potentially embedded in it.
 
 ### Credential Handling
 
-Sometimes you need to provide credentials for a service, but don't want to hard-code them into your scripts, especially if you're collaborating on a hunt.  `huntlib` provides the `promptCreds()` function to help with this. This function works well both in the terminal and when called from within a Jupyter notebook.
+Sometimes you need to provide credentials for a service, but don't want to hard-code them into your scripts, especially if you're collaborating on a hunt.  `huntlib.util` provides the `promptCreds()` function to help with this. This function works well both in the terminal and when called from within a Jupyter notebook.
 
 Call it like so:
 
@@ -288,15 +413,17 @@ Call it like so:
 You can change one or both of the username/password prompts by passing arguments:
 
 ```python
-(username, password) = promptCreds(uprompt="LAN ID: ",
-                                   pprompt="LAN Pass: ")
+(username, password) = promptCreds(
+                            uprompt="LAN ID: ",
+                            pprompt="LAN Pass: "
+                        )
 ```
 
 ### String Similarity
 
 String similarity can be expressed in terms of "edit distance", or the number of single-character edits necessary to turn the first string into the second string.  This is often useful when, for example, you want to find two strings that very similar but not identical (such as when hunting for [process impersonation](http://detect-respond.blogspot.com/2016/11/hunting-for-malware-critical-process.html)).
 
-There are a number of different ways to compute similarity. `huntlib` provides the `edit_distance()` function for this, which supports several algorithms:
+There are a number of different ways to compute similarity. `huntlib.util` provides the `edit_distance()` function for this, which supports several algorithms:
 
 * [Levenshtein Distance](https://en.wikipedia.org/wiki/Levenshtein_distance)
 * [Damerau-Levenshtein Distance](https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance)
@@ -307,13 +434,13 @@ There are a number of different ways to compute similarity. `huntlib` provides t
 Here's an example:
 
 ```python
->>> huntlib.edit_distance('svchost', 'scvhost')
+>>> edit_distance('svchost', 'scvhost')
 1
 ```
 
 You can specify a different algorithm using the `method` parameter. Valid methods are `levenshtein`, `damerau-levenshtein`, `hamming`, `jaro` and `jaro-winkler`. The default is `damerau-levenshtein`.
 
 ```python
->>> huntlib.edit_distance('svchost', 'scvhost', method='levenshtein')
+>>> edit_distance('svchost', 'scvhost', method='levenshtein')
 2
 ```
