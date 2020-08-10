@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='huntlib',
-      version='0.5.0a4',
+      version='0.5.0',
       description='A Python library to help with some common threat hunting data analysis operations',
       long_description=long_description,
       long_description_content_type="text/markdown",
@@ -24,7 +24,8 @@ setup(name='huntlib',
         'numpy',
         'jellyfish>=0.8.2',
         'domaintools_api',
-        'tqdm'
+        'tqdm',
+        'scipy'
       ],
       zip_safe=True,
       classifiers=[
