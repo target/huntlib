@@ -469,7 +469,7 @@ Here's an example of calling the `benfords()` function, with a contrived set of 
                7, 7, 
                8, 
                9]
->>> benrods(numbers)
+>>> benfords(numbers)
 (0.019868294035033682, 0.9999999995974126, 1    0.32
 2    0.16
 3    0.12
