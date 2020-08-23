@@ -8,6 +8,7 @@ The `huntlib` module provides three major object classes as well as a few conven
 
 * **ElasticDF**: Search Elastic and return results as a Pandas DataFrame
 * **SplunkDF**: Search Splunk and return results as a Pandas DataFrame
+* **SumologicDF**: Search Sumologic and return results as a Pandas DataFrame
 * **DomainTools**: Convenience functions for accessing the DomainTools API, primarily focused around data enrichment (requires a DomainTools API subscription)
 * **data.read_json()**: Read one or more JSON files and return a single Pandas DataFrame
 * **data.read_csv()**: Read one or more CSV files and return a single Pandas DataFrame
@@ -234,6 +235,12 @@ df = s.search_df(
 ```
 
 *NOTE: You may have to experiment to find the optimal number of parallel processes for your specific environment. Maxing out the number of workers doesn't always give the best performance.*
+
+## huntlib.sumologic.SumologicDF
+The `SumologicDF()` class searches Sumologic and returns results as a Pandas DataFrame.  This makes it easier to work with the search results using standard data analysis techniques.
+
+It follows similar syntax to above.
+See jupyter notebook example in tests directory.
 
 ## huntlib.domaintools.DomainTools
 The `DomainTools` class allows you to easily perform some common types of calls

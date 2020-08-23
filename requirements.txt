@@ -1,7 +1,9 @@
 future
 splunk-sdk
 elasticsearch-dsl
+sumologic-sdk
 pandas
+openpyxl
 numpy
 jellyfish>=0.8.2
 domaintools_api
