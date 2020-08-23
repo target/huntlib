@@ -460,8 +460,8 @@ See https://en.wikipedia.org/wiki/Benford%27s_law for more info on Benford's Law
 
 The `benfords()` function returns a 3-tuple of values like: `(chi2, p, counts)`.
 
-* `chi2` is a float in the range 0..1 that describes how well the observed distribution of first digits matched the predictions of Benford's Law.  Lower is better.  
-* `p` is the probability that the computed 'chi2' is significant (i.e., it tells you whether the chi2 value can be trusted).  Its range is also 0..1, but in this case, higher is better.  Generally speaking, if the p-value is >= 0.95 then the chi2 value is considered significant.
+* `chi2` is a float that describes how well the observed distribution of first digits matched the predictions of Benford's Law.  Lower is better.  
+* `p` is the probability that the computed 'chi2' is significant (i.e., it tells you whether the chi2 value can be trusted).  Its range is 0..1, but in this case, higher is better.  Generally speaking, if the p-value is >= 0.95 then the chi2 value is considered significant.
 * `counts` is a Pandas series where the indices are the possible first digits 1-9 and the values are the observed distributions of those digits. If the observed distributions didn't match up with Benford's law, the counts may help you identify the anomalous values.
 
 Here's an example of calling the `benfords()` function, with a contrived set of numbers that definitely conform to the expected distribution:
