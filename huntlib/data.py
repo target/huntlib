@@ -113,3 +113,18 @@ def flatten(obj, sep='.'):
             yield keypath, obj
 
     return dict(_flatten(obj=obj, sep=sep))
+
+def chunk(sequence, size=10):
+    '''
+    Given a sequence-like object, divide into chunks of `size`
+    and return those as a generator. If the length of the sequence
+    is not evenly divisible by the size, the final chunk will 
+    contain however many items remain.
+
+    :param sequence: The sequence to chunk up
+    :param size: The chunk size 
+    '''
+
+    for chunk in [sequence[i:i+size] for i in range(0, len(sequence), size)]:
+        yield chunk
+
