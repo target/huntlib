@@ -12,10 +12,12 @@ The `huntlib` module provides three major object classes as well as a few conven
 * **data.read_json()**: Read one or more JSON files and return a single Pandas DataFrame
 * **data.read_csv()**: Read one or more CSV files and return a single Pandas DataFrame
 * **data.flatten()**: Recursively flatten dicts/lists into a single level dict. Useful for data normalization and creating DataFrames.
+* **data.chunk()**: Break up a large list into smaller chunks for processing.
 * **util.entropy()** / **util.entropy_per_byte()**: Calculate Shannon entropy
 * **util.promptCreds()**: Prompt for login credentials in the terminal or from within a Jupyter notebook.
-* **util.edit_distance()**: Calculate how "different" two strings are from each other
-* **util.benfords()**: Determine whether a given collection of numbers obeys Benford's Law
+* **util.edit_distance()**: Calculate how "different" two strings are from each other.
+* **util.benfords()**: Determine whether a given collection of numbers obeys Benford's Law.
+* **util.punctuation_pattern()**: Return only the non-alphanumeric characters from a given string or collection of strings.
 
 ## Library-Wide Configuration
 Beginning with `v0.5.0`, `huntlib` now provides a library-wide configuration file, `~/.huntlibrc` allowing you to set certain runtime defaults.  Consult the file `huntlibrc-sample` in this repo for more information.
@@ -384,6 +386,19 @@ A more complex example:
     >>> flatten([{'a': 'a', 'b': 'b'}, {'a': 'a1', 'c': 'c'}])
     {'0.a': 'a', '0.b': 'b', '1.a': 'a1', '1.c': 'c'}
 
+### Breaking a long list-like object into smaller chunks
+Given a list-like object, divide into chunks of `size` and return those as a generator. If the length of the sequence is not evenly divisible by the size, the final chunk will contain however many items remain.
+
+    >>> l = list(range(26))
+    >>> for i in chunk(l, size=5):
+    ...   print(i)
+    [0, 1, 2, 3, 4]
+    [5, 6, 7, 8, 9] 
+    [10, 11, 12, 13, 14]
+    [15, 16, 17, 18, 19]
+    [20, 21, 22, 23, 24]
+    [25]
+
 ## Util Module 
 
 The `huntlib.util` modules contains miscellaneous functions that don't fit anywhere else, but are nevertheless still useful.
@@ -498,4 +513,20 @@ Here the input is a set of random numbers, which do not conform to Benford's Law
 8    0.083
 9    0.121
 Name: digits, dtype: float64)
+```
+
+### Generate punctuation patterns from strings
+
+For certain types of log analysis, the contents of the individual log messages is not as important as the format of the message itself. This often results in the need to examine the pattern of punctuation (non-alphanumeric characters). To facilitate this, the `punctuation_pattern()` function accepts a single string or a list-like collection of strings and returns *just* the non-alphanumeric characters.
+
+```python
+>>> >>> s = '192.168.1.1 - - [10/Oct/2020:12:32:27 +0000] "GET /some/web/app?param=test&param2=another_test" 200 9987'
+>>> punctuation_pattern(s)
+'..._-_-_[//:::_+]_"_///?=&=_"__'
+
+>>> l = [s, "Another example. This time, of a list of strings!"]
+>>> punctuation_pattern(l)
+0    ..._-_-_[//:::_+]_"_///?=&=_"__
+1                        _.__,_____!
+Name: punct, dtype: object
 ```
