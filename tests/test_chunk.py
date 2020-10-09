@@ -5,7 +5,7 @@ import numpy as np
 
 from unittest import TestCase
 
-class TestEntropy(TestCase):
+class TestChunk(TestCase):
     def test_chunk(self):
         l = list(np.random.randint(10, size=100))
 
