@@ -10,6 +10,7 @@ from jellyfish import levenshtein_distance, damerau_levenshtein_distance, hammin
 import sys
 import platform
 import multiprocessing
+import re
 
 import pandas as pd
 import numpy as np
@@ -192,3 +193,53 @@ def benfords(numbers):
 system_type = platform.system()
 if system_type == "Darwin":
     multiprocessing.set_start_method('fork')
+
+def punctuation_pattern(strings, escape_quotes=False):
+    '''
+    Return only the non-alphanumeric characters in the input string(s).  
+    White spaces in the input will be translated into underscore characters
+    in the output. 
+
+    :param strings: The input string(s) to process.
+    :type strings: A single string or a list-like object of strings (e.g. a pandas Series)
+
+    :Return Value:
+    If the input is a single string, the output will also be a single string.  Otherwise
+    the output will be a pandas Series of results in the same order as the input strings.
+    '''
+
+    def _get_punct_pattern(s: str) -> str:
+
+        res = re.sub(
+            '\s',
+            '_',
+            re.sub(
+                '[a-zA-Z0-9]',
+                '',
+                s
+            )
+        )
+
+        if escape_quotes:
+            res = re.sub(
+                '([\'\"])',
+                r'\\\1',
+                res
+            )
+
+        return res 
+
+    if isinstance(strings, str):
+        strings = [strings]
+    elif not is_list_like(strings):
+        raise TypeError(f'The argument must be a string or list-like of strings, not type {type(strings)}.')
+
+    strings = pd.DataFrame(strings, columns=['strings'])
+    strings['punct'] = strings['strings'].apply(_get_punct_pattern)
+
+    res = strings['punct']
+    
+    # If there's only one result, it was because we passed a single string,
+    # just return a single result. Otherwise return all results.
+    return res[0] if res.shape[0] == 1 else res 
+
