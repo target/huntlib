@@ -4,7 +4,7 @@ import huntlib.util as util
 from huntlib.decorators import future_warning
 import warnings 
 
-__all__ = ['entropy', 'entropy_per_byte', 'promptCreds', 'edit_distance', 'flatten']
+__all__ = ['entropy', 'entropy_per_byte', 'promptCreds', 'edit_distance']
 
 @future_warning("The huntlib.entropy() function has been moved to huntlib.util.entropy(). Please update your code. This compatibility will be removed in a future release.")
 def entropy(*args, **kwargs):
