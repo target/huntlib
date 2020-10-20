@@ -135,6 +135,18 @@ def benfords(numbers):
     '''
 
     def _first_digit(i: float):
+        # This doesn't apply to zeros!
+        if i == 0:
+            return np.nan
+        # Make negative numbers positive
+        if i < 0:
+            i = abs(i)
+        # If the number is between 0 and 1, multiply by 10 until it becomes > 1
+        # so the repeated divisions will work
+        elif i < 1:
+            while i < 1:
+                i *= 10
+
         while i >= 10:
             i //= 10
         return trunc(i)
@@ -157,7 +169,7 @@ def benfords(numbers):
         numbers = numbers.values
 
     numbers = pd.DataFrame(numbers, columns=['numbers'])
-    numbers['digits'] = numbers['numbers'].apply(_first_digit)
+    numbers['digits'] = numbers['numbers'].apply(_first_digit).dropna()
 
     counts = numbers['digits'].value_counts()
 

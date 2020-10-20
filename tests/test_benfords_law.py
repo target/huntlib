@@ -43,3 +43,21 @@ class TestBenfordsLaw(TestCase):
             0.99,
             f"Chi square p-value was too low."
         )
+
+    def test_benfords_floats_and_negatives(self):
+        nums = [1, 1.0, 0.001, 1, 1, 1, 1, 1, .02, 2, 2, 2.99,
+                3, 3.14159, 3, 4, 4, -5, 5, 6, 6, 7, 7, -8, 9]
+
+        chi2, p, counts = benfords(nums)
+
+        self.assertLessEqual(
+            chi2,
+            0.05,
+            f"The chosen distribution did not conform to Benford's law, but should have. (chisquare={chi2})"
+        )
+
+        self.assertGreaterEqual(
+            p,
+            0.99,
+            f"Chi square p-value was too low."
+        )
