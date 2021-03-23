@@ -362,8 +362,28 @@ or
 ```python
 df = read_csv("*.csv")
 ```
+#### Post-Processing the Input Data
+Both `read_json()` and `read_csv()` support an optional `post_function` parameter, which allows you to specify a function to post-process the data after each individual file is read in, before it is merged into the final returned DataFrame. For example, you might want to split or combine columns, or compute a new value from existing data.  
 
-Consult the Pandas documentation for information on supported options for `read_csv()` and `read_json()`.
+Start by creating a post-processing function according to the following prototype:
+
+```python
+def my_post_processor(df, filename):
+    # do some stuff 
+
+    return df
+```
+
+When called, the `df` parameter will be a DataFrame containing the chunk of data just read, and the `filename` parameter will be the name of the file it came from, which will be different for each chunk. **IT IS IMPORTANT THAT YOU RETURN `df` no matter whether you modified the input DataFrame or not.**
+
+Once you have defined the post-processor function, you can invoke it during your call to `read_json()` or `read_csv()` like so:
+
+```python
+df = read_csv("*.csv", post_function=my_post_processor)
+```
+
+#### Additional Read Options
+Consult the Pandas documentation for information on other supported options for `read_csv()` and `read_json()`.
 
 ### Normalizing nesting dicts and lists
 

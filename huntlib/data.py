@@ -7,23 +7,23 @@ import os
 
 __all__ = ['read_json', 'read_csv', 'flatten']
 
-def _read_multi(func=None, path_or_buf=None, *args, **kwargs):
+def _read_multi(read_function=None, path_or_buf=None, post_function=None, *args, **kwargs):
     """
     Given a wildcard filename pattern (which may be just a single static
     filename), expand the wildcard and read all the files into a single
     pandas DataFrame() object.  
 
-    :param func: Reference to the function which will read an individual data file (e.g., pd.read_csv)
+    :param read_function: Reference to the function which will read an individual data file (e.g., pd.read_csv)
     :param path_or_buf: A wildcard specifying which file(s) to read
-    :type func: A reference to a valid function which returns a pd.DataFrame() object
+    :type read_function: A reference to a valid function which returns a pd.DataFrame() object
     :type path_or_buf: A `str`, `bytes` or os.PathLike object
     """
 
     # Make sure we have specified a read function.  This should never
     # be called by an end user, so our code should always include one,
     # but you never know.
-    if not func:
-        raise ValueError("Must specify a read function in the `func` arg.")
+    if not read_function:
+        raise ValueError("Must specify a read function in the `read_function` arg.")
 
     # Make sure we have a valid type of data for `path_or_buf` in glob(),
     # otherwise raise the same exception the original pandas function 
@@ -31,13 +31,12 @@ def _read_multi(func=None, path_or_buf=None, *args, **kwargs):
     if not type(path_or_buf) in [str, bytes, os.PathLike]:
         raise ValueError(f"Invalid file path or buffer object type: {type(path_or_buf)}")
 
-    combined_df = pd.concat(
-        [
-            func(f, *args, **kwargs)
-            for f in glob(path_or_buf)
-        ],
-        ignore_index=True
-    )
+    combined_df = pd.DataFrame() 
+    for f in glob(path_or_buf):
+        temp_df = read_function(f, *args, **kwargs)
+        if post_function:
+            temp_df = post_function(temp_df, f)
+        combined_df = combined_df.append(temp_df, ignore_index=True)
 
     return combined_df
 
@@ -48,7 +47,7 @@ def read_json(path_or_buf=None, *args, **kwargs):
     """
 
     return _read_multi(
-        func=pd.read_json,
+        read_function=pd.read_json,
         path_or_buf=path_or_buf,
         *args,
         **kwargs
@@ -61,7 +60,7 @@ def read_csv(path_or_buf=None, *args, **kwargs):
     """
 
     return _read_multi(
-        func=pd.read_csv,
+        read_function=pd.read_csv,
         path_or_buf=path_or_buf,
         *args,
         **kwargs
