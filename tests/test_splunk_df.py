@@ -2,6 +2,7 @@
 
 import os
 import unittest
+
 from multiprocessing import cpu_count
 from unittest import TestCase
 
@@ -344,3 +345,11 @@ class TestSplunkDF(TestCase):
             "val" in df.columns,
             "Column 'val' was not found in the search results."
         )
+
+    def test_too_many_time_modifiers(self):
+        '''
+        Do a basic search with more than one time modifier.
+        '''
+        with self.assertRaises(ValueError) as err:
+            self._splunk_conn.search(spl="search index=foobar hello", days=12, hours=23)
+        self.assertIn("between days", err)

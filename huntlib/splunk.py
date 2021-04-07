@@ -39,6 +39,13 @@ class SplunkDF(object):
         # Time bounded search, 2 days prior to now
         df = s.search(spl="search index=win_events EventCode=4688", days=2)
 
+        # ... or 3 hours prior to now
+        df = s.search(spl="search index=win_events EventCode=4688", hours=3)
+
+        # ... or 30 minutes prior to now
+        df = s.search(spl="search index=win_events EventCode=4688", minutes=30)
+
+
         # Time bounded search using Python datetime() values
         df = s.search(
                         spl="search index=win_events EventCode=4688",
@@ -163,6 +170,10 @@ class SplunkDF(object):
               the Splunk server.
         days: Search the past X days. If provided, this supercedes both start_time
               and end_time.
+        hours: Search the past X hours. If provided, this supercedes both start_time
+              and end_time.
+        minutes: Search the past X minutes. If provided, this supercedes both start_time
+              and end_time.
         start_time: A datetime() object representing the start of the search
                     window, or a string in Splunk syntax (e.g., "-2d@d"). If used
                     without end_time, the end of the search window is the current time.
@@ -191,6 +202,8 @@ class SplunkDF(object):
             'search_args', 
             'verbose', 
             'days', 
+            'hours',
+            'minutes',
             'start_time',
             'end_time', 
             'limit',
@@ -210,6 +223,8 @@ class SplunkDF(object):
         kwargs['search_args'] = kwargs.get('search_args', None)
         kwargs['verbose'] = kwargs.get('verbose', False)
         kwargs['days'] = kwargs.get('days', None)
+        kwargs['hours'] = kwargs.get('hours', None)
+        kwargs['minutes'] = kwargs.get('minutes', None)
         kwargs['start_time'] = kwargs.get('start_time', None)
         kwargs['end_time'] = kwargs.get('end_time', None)
         kwargs['limit'] = kwargs.get('limit', None)
@@ -238,9 +253,18 @@ class SplunkDF(object):
             kwargs['search_args'] = dict()
         kwargs['search_args']["search_mode"] = kwargs['mode']
 
+        if (kwargs["days"] or kwargs["hours"] or kwargs["minutes"]) and not (
+             bool(kwargs["days"]) ^ bool(kwargs["hours"]) ^ bool(kwargs["minutes"])
+        ):
+            raise ValueError("you must choose between days, hours or minutes")
+
         if kwargs['days']:
             # Search from current time backwards
             kwargs['search_args']["earliest_time"] = "-%dd" % kwargs['days']
+        elif kwargs["hours"]:
+            kwargs["search_args"]["earliest_time"] = "-%dh" % kwargs["hours"]
+        elif kwargs["minutes"]:
+            kwargs["search_args"]["earliest_time"] = "-%dm" % kwargs["minutes"]
         else:
             if kwargs['start_time']:
                 # convert to string if it's a datetime
