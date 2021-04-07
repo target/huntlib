@@ -66,10 +66,13 @@ class SplunkDF(object):
 
     splunk_conn = None # The connection to the Splunk server (Splunk client)
 
-    def __init__(self, host=None, username=None, password=None, token=None, port=8089):
+    def __init__(self, host=None, username=None, password=None, token=None, port=8089, conn=None):
         '''
         Create the SplunkDF object and login to the Splunk server.
         '''
+        if conn:
+            self.splunk_conn = conn
+            return
         try:
             if token:
                 self.splunk_conn = client.connect(
@@ -189,12 +192,11 @@ class SplunkDF(object):
                 query, like so: "| fields field1,field2,field3".  The default is '*',
                 meaning all fields.
         internal_fields: Control whether or not to return Splunk's internal fields.
-                If set to False, all fields with names beginning with an underscore 
+                If set to False, all fields with names beginning with an underscore
                 will be removed from the results.  If set to True, nothing will be removed.
                 If this is a string, treat it as a comma-separated list of fields to remove
                 from the results. Default is False.
         '''
-
         # Valid argument checking
         valid_args = [
             'spl', 
@@ -253,9 +255,8 @@ class SplunkDF(object):
             kwargs['search_args'] = dict()
         kwargs['search_args']["search_mode"] = kwargs['mode']
 
-        if (kwargs["days"] or kwargs["hours"] or kwargs["minutes"]) and not (
-             bool(kwargs["days"]) ^ bool(kwargs["hours"]) ^ bool(kwargs["minutes"])
-        ):
+        opts = sum(map(bool, [kwargs["days"], kwargs["hours"], kwargs["minutes"]]))
+        if opts > 1:
             raise ValueError("you must choose between days, hours or minutes")
 
         if kwargs['days']:

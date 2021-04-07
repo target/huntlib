@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import io
 import unittest
 
 from multiprocessing import cpu_count
@@ -346,10 +347,32 @@ class TestSplunkDF(TestCase):
             "Column 'val' was not found in the search results."
         )
 
+
+class MockSplunkJobs(object):
+    def export(self, spl, **kwargs):
+        "Returns a result_stream that can be parsed by splunklib.results.ResultReader"
+        return io.BytesIO()
+
+    def create(self, spl, **kwargs):
+        pass
+
+
+class MockSplunkClient(object):
+    jobs = MockSplunkJobs()
+
+
+class UnitTestSplunkDF(TestCase):
+    def setUp(self):
+        splunk_client = MockSplunkClient()
+        self.splunk = SplunkDF(conn=splunk_client)
+
     def test_too_many_time_modifiers(self):
         '''
         Do a basic search with more than one time modifier.
         '''
-        with self.assertRaises(ValueError) as err:
-            self._splunk_conn.search(spl="search index=foobar hello", days=12, hours=23)
-        self.assertIn("between days", err)
+        with self.assertRaisesRegex(ValueError, "you must choose between") as err:
+            list(self.splunk.search(spl="search index=foobar hello", days=12, hours=23))
+        with self.assertRaisesRegex(ValueError, "you must choose between") as err:
+            list(self.splunk.search(spl="search index=foobar hello", hours=23, minutes=17))
+        with self.assertRaisesRegex(ValueError, "you must choose between") as err:
+            list(self.splunk.search(spl="search index=foobar hello", days=12, hours=23, minutes=17))
