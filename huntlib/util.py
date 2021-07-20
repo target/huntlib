@@ -223,7 +223,7 @@ def punctuation_pattern(strings, escape_quotes=False):
     def _get_punct_pattern(s: str) -> str:
 
         res = re.sub(
-            '\s',
+            r'\s',
             '_',
             re.sub(
                 '[a-zA-Z0-9]',
