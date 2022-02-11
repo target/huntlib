@@ -114,3 +114,29 @@ class TestElasticDF(TestCase):
             3,
             "There should be exactly 3 search results with min <= 2"
         )
+
+class TestElasticDFOpenSearch(TestElasticDF):
+    _es_url = "https://localhost:9201"
+    _es_user = "admin"
+    _es_pass = "admin"
+
+    _es_conn = None
+
+    @classmethod
+    def setUpClass(self):
+        '''
+        Log into the Elastic server once, and reuse that connection for all the 
+        tests in this module.
+        '''
+        e = ElasticDF(
+            url=self._es_url,
+            username=self._es_user,
+            password=self._es_pass,
+            verify_certs=False
+        )
+
+        self.assertNotEqual(
+            e, None, "ElasticDF() returned a None object at login.")
+
+        self._es_conn = e
+        

@@ -19,6 +19,7 @@ setup(name='huntlib',
       install_requires=[
         'future',
         'splunk-sdk',
+        'elasticsearch<7.14.0'
         'elasticsearch-dsl',
         'pandas',
         'numpy',
