@@ -254,7 +254,7 @@ class TestDomainTools(TestCase):
 
 
     def test_risk(self):
-        risk = self._handle.risk('wstwc.cn')
+        risk = self._handle.risk('www.google.com')
 
         self.assertIsInstance(
             risk,
@@ -262,11 +262,16 @@ class TestDomainTools(TestCase):
             "Risk scoring should have returned a dict."
         )
 
-        self.assertIn(
-            "proximity",
+        self.assertNotEqual(
             risk,
-            "The returned risk data did not contain a 'proximity' risk value."
+            dict(),
+            "The query returned no risk information for an existing domain."
         )
+#        self.assertIn(
+#            "proximity",
+#            risk,
+#            "The returned risk data did not contain a 'proximity' risk value."
+#        )
 
         # Test against a domain that doesn't exist
         risk = self._handle.risk(self._nonexistent_domain)
