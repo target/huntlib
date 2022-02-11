@@ -16,12 +16,18 @@ case "$1" in
 
         echo "****** Starting Splunk Enterprise via Docker ******"
         docker run -it -d --name splunk_test -e SPLUNK_START_ARGS=--accept-license -e SPLUNK_LICENSE_URI=/tmp/splunk.lic -e SPLUNK_PASSWORD=testpass -p 8000:8000 -p 8089:8089 -v `pwd`/support/Splunk.License:/tmp/splunk.lic -v `pwd`/support/test-data.json:/tmp/test-data.json -v `pwd`/support/test-data-large.json:/tmp/test-data-large.json splunk/splunk:latest
+        sleep 5
+
         echo "****** Starting Elastic via Docker ******"
-        #docker run -d -it --name elastic_test -e node.name=es01 -e cluster.initial_master_nodes=es01 -e xpack.license.self_generated.type=trial -e xpack.security.enabled=true -e xpack.security.http.ssl.enabled=true -e xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certificates/elastic_test/elastic_test.key -e xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt -e xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certificates/elastic_test/elastic_test.crt -v `pwd`/support/certs:/usr/share/elasticsearch/config/certificates -p 9200:9200 docker.elastic.co/elasticsearch/elasticsearch:7.6.2
-        docker run -d -it --name elastic_test -e node.store.allow_mmap=false -e node.name=es01 -e cluster.initial_master_nodes=es01 -e xpack.license.self_generated.type=trial -e xpack.security.enabled=true -e xpack.security.http.ssl.enabled=true -e xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certificates/elastic_test/elastic_test.key -e xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt -e xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certificates/elastic_test/elastic_test.crt -v `pwd`/support/certs:/usr/share/elasticsearch/config/certificates -p 9200:9200 docker.elastic.co/elasticsearch/elasticsearch:7.6.2
+        docker run -d -it --name elastic_test -e node.store.allow_mmap=false -e node.name=es01 -e cluster.initial_master_nodes=es01 -e xpack.license.self_generated.type=trial -e xpack.security.enabled=true -e xpack.security.http.ssl.enabled=true -e xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certificates/elastic_test/elastic_test.key -e xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt -e xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certificates/elastic_test/elastic_test.crt -v `pwd`/support/certs:/usr/share/elasticsearch/config/certificates -p 9200:9200 docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+        sleep 5
+
+        echo "****** Starting OpenSearch via Docker ******"
+        docker run -d -it --name opensearch_test -e discovery.type=single-node -p 9201:9200 opensearchproject/opensearch:1.2.3
+        sleep 5
 
         echo "****** Sleeping to allow containers to start ******"
-        sleep 60
+        sleep 120
 
         echo "****** Loading Splunk data ******"
         docker exec -it splunk_test sudo /opt/splunk/bin/splunk list user -auth admin:testpass
@@ -34,6 +40,11 @@ case "$1" in
         echo \{\"password\": \"testpass\"\} | curl -u elastic:`cat /tmp/elastic_pass.txt` --cacert support/certs/ca/ca.crt -H "Content-Type: application/json" -XPOST https://localhost:9200/_security/user/elastic/_password  --data-binary @-
         curl -u elastic:testpass --cacert support/certs/ca/ca.crt -H "Content-Type: application/json" -XPOST "https://localhost:9200/_bulk" --data-binary @support/test-data-elastic.json > /dev/null
         curl -u elastic:testpass --cacert support/certs/ca/ca.crt -H "Content-Type: application/json" -XPOST "https://localhost:9200/_bulk" --data-binary @support/test-data-large-elastic.json > /dev/null
+
+        echo "****** Loading OpenSearch data ******"
+        curl --insecure -u admin:admin -H "Content-Type: application/json" -XPOST "https://localhost:9201/_bulk" --data-binary @support/test-data-elastic.json > /dev/null
+        curl --insecure -u admin:admin -H "Content-Type: application/json" -XPOST "https://localhost:9201/_bulk" --data-binary @support/test-data-large-elastic.json > /dev/null
+
     ;;
     "stop") 
         echo "****** Stopping any previous Splunk container ******"
@@ -47,6 +58,10 @@ case "$1" in
         docker kill elastic_test
         docker stop elastic_test
         docker rm elastic_test
+        echo "****** Stopping any previous OpenSearch containers ******"
+        docker kill opensearch_test
+        docker stop opensearch_test 
+        docker rm opensearch_test
         echo "****** Cleaning up artifacts ******"
         rm -rf support/certs
         rm -f /tmp/elastic_pass.txt    
