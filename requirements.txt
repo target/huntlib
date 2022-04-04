@@ -1,7 +1,7 @@
 future
 splunk-sdk
-elasticsearch<7.14.0
-elasticsearch-dsl
+opensearch-py
+opensearch-dsl
 pandas
 numpy
 jellyfish>=0.8.2
