@@ -1,8 +1,8 @@
 from huntlib.exceptions import AuthenticationErrorSearchException, InvalidRequestSearchException, UnknownSearchException
 from builtins import object
-from elasticsearch import Elasticsearch
-from elasticsearch_dsl import Search
-import elasticsearch.exceptions
+from opensearchpy import OpenSearch
+from opensearch_dsl import Search
+import opensearchpy.exceptions
 import pandas as pd
 from datetime import datetime, timedelta
 
@@ -57,7 +57,7 @@ class ElasticDF(object):
         Create the ElasticDF object and log into the Elastic server.
         '''
 
-        self.es_conn = Elasticsearch(
+        self.es_conn = OpenSearch(
             url,
             timeout=timeout,
             use_ssl=ssl,
@@ -128,7 +128,7 @@ class ElasticDF(object):
                 # Scan to explicitly return all results
                 response = s.execute()
                 s = s.scan()
-        except elasticsearch.exceptions.AuthenticationException:
+        except opensearchpy.exceptions.AuthenticationException:
             raise AuthenticationErrorSearchException("Login failed.")
 
         if response.success():
